@@ -33,6 +33,7 @@ export function App() {
     const host = hostRef.current
     if (!host || !hasWebGl()) return
     session.clearError()
+    host.hidden = false
     const cameraPrompt = canAttemptWorldTracking() ? requestArPermissions() : Promise.resolve()
     void cameraPrompt
       .then(() => {

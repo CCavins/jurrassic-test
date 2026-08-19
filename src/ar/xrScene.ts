@@ -1,7 +1,7 @@
 import { Clock, Quaternion, Vector3 } from 'three'
 import type { DinosaurConfig } from '../config/dinosaurs'
 import type { XR8Api, XR8Reality } from '../types/xr8'
-import { captureStillFromXr, MAX_MS, RECORD_BITRATE, RECORD_MAX_DIMENSION, RECORD_TICK_MS } from './captureManager'
+import { captureStillFromXr, MAX_MS, RECORD_MAX_DIMENSION, RECORD_TICK_MS } from './captureManager'
 import { DinosaurInteraction } from './dinosaurInteraction'
 import { DinosaurManager } from './dinosaurManager'
 import { screenToGround } from './dinosaurPlacement'
@@ -181,15 +181,22 @@ export class XrWorldScene {
 
   startRecording(XR8: XR8Api): void {
     if (!XR8.MediaRecorder) throw new Error('Video recording is not available on this device.')
-    XR8.MediaRecorder.configure({
-      maxDurationMs: MAX_MS,
-      maxDimension: RECORD_MAX_DIMENSION,
-      fps: 30,
-      videoBitsPerSecond: RECORD_BITRATE,
-      enableEndCard: false,
-      requestMic: XR8.MediaRecorder.RequestMicOptions.MANUAL,
-      fileNamePrefix: 'jurassic-adventure-',
-    })
+    try {
+      XR8.MediaRecorder.configure({
+        maxDurationMs: MAX_MS,
+        maxDimension: RECORD_MAX_DIMENSION,
+        enableEndCard: false,
+        requestMic: XR8.MediaRecorder.RequestMicOptions.MANUAL,
+        fileNamePrefix: 'jurassic-adventure-',
+      })
+    } catch {
+      XR8.MediaRecorder.configure({
+        maxDurationMs: MAX_MS,
+        enableEndCard: false,
+        requestMic: XR8.MediaRecorder.RequestMicOptions.MANUAL,
+        fileNamePrefix: 'jurassic-adventure-',
+      })
+    }
     this.recording = true
     this.lastRecordEmit = 0
     XR8.MediaRecorder.recordVideo({

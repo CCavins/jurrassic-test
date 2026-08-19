@@ -1,12 +1,6 @@
 import type { DinosaurConfig } from '../config/dinosaurs'
 import { canAttemptWorldTracking } from '../utils/device'
-import {
-  captureStillFromCanvas,
-  createCanvasRecorder,
-  MAX_MS,
-  RECORD_BITRATE,
-  RECORD_MAX_DIMENSION,
-} from './captureManager'
+import { captureStillFromCanvas, createCanvasRecorder, MAX_MS } from './captureManager'
 import { DesktopPreview } from './desktopFallback'
 import { ArEmitter } from './events'
 import { createFullWindowCanvasModule } from './fullWindowCanvas'
@@ -124,24 +118,10 @@ class XrFacade {
 
   pauseForPreview(): void {
     this.desktop?.setPaused(true)
-    if (this.mode === 'xr' && window.XR8?.pause) {
-      try {
-        window.XR8.pause()
-      } catch {
-        // pause is best-effort so the share screen can play back smoothly.
-      }
-    }
   }
 
   resumeFromPreview(): void {
     this.desktop?.setPaused(false)
-    if (this.mode === 'xr' && window.XR8?.resume) {
-      try {
-        window.XR8.resume()
-      } catch {
-        // resume is best-effort after the share screen closes.
-      }
-    }
   }
 
   stop(): void {
@@ -186,9 +166,6 @@ class XrFacade {
     })
     XR8.MediaRecorder?.configure({
       maxDurationMs: MAX_MS,
-      maxDimension: RECORD_MAX_DIMENSION,
-      fps: 30,
-      videoBitsPerSecond: RECORD_BITRATE,
       enableEndCard: false,
       requestMic: XR8.MediaRecorder.RequestMicOptions.MANUAL,
     })
@@ -201,6 +178,7 @@ class XrFacade {
     await world.prepare(config)
     if (generation !== this.generation) return false
 
+    host.hidden = false
     const canvas = document.createElement('canvas')
     canvas.id = 'camerafeed'
     canvas.className = 'xr-canvas'
