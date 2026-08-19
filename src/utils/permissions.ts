@@ -36,11 +36,11 @@ export function requestArPermissions(): Promise<void> {
   return Promise.all([camera, motion]).then(() => undefined)
 }
 
-export function cameraErrorFrom(error: unknown): { code: string; title: string; message: string } {
+export function classifyArError(error: unknown): { code: string; title: string; message: string } {
   const denied =
     error instanceof DOMException && (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError')
   const missing = error instanceof DOMException && error.name === 'NotFoundError'
-  if (denied) {
+  if (denied || error instanceof CameraPermissionError) {
     return {
       code: 'camera',
       title: 'Camera access required',
@@ -54,9 +54,12 @@ export function cameraErrorFrom(error: unknown): { code: string; title: string; 
       message: 'This device does not appear to have a camera the browser can use.',
     }
   }
+  const detail = error instanceof Error ? error.message : 'The AR engine failed to start.'
   return {
-    code: 'camera',
-    title: 'Camera access required',
-    message: error instanceof Error ? error.message : 'Jurassic Adventure needs access to your camera.',
+    code: 'engine',
+    title: 'AR failed to start',
+    message: /THREE/i.test(detail)
+      ? 'The 3D engine could not start. Close the tab and try Enter AR again.'
+      : detail,
   }
 }

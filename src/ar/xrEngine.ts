@@ -1,7 +1,12 @@
+import * as THREE from 'three'
 import type { XR8Api, XR8PipelineModule } from '../types/xr8'
 import { publicUrl } from '../utils/paths'
 
 let loadPromise: Promise<XR8Api> | null = null
+
+export function exposeThreeGlobal(): void {
+  window.THREE = THREE
+}
 
 function injectScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -38,8 +43,10 @@ function waitForXr8(): Promise<XR8Api> {
 }
 
 export async function loadXrEngine(): Promise<XR8Api> {
+  exposeThreeGlobal()
   if (!loadPromise) {
     loadPromise = (async () => {
+      exposeThreeGlobal()
       await injectScript(publicUrl('external/xr/xr.js'))
       const XR8 = await waitForXr8()
       if (typeof XR8.loadChunk === 'function') {

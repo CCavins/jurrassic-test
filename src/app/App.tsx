@@ -10,7 +10,7 @@ import { LoadingScreen } from '../components/LoadingScreen/LoadingScreen'
 import { PermissionScreen } from '../components/PermissionScreen/PermissionScreen'
 import { useARSession } from '../hooks/useARSession'
 import { canAttemptWorldTracking, hasWebGl, isSecureContextRequired } from '../utils/device'
-import { cameraErrorFrom, requestArPermissions } from '../utils/permissions'
+import { classifyArError, requestArPermissions } from '../utils/permissions'
 import { publicUrl } from '../utils/paths'
 import type { AppScreen } from './appState'
 
@@ -41,7 +41,7 @@ export function App() {
       })
       .catch((error: unknown) => {
         setScreen('ar')
-        session.reportError(cameraErrorFrom(error))
+        session.reportError(classifyArError(error))
       })
   }
 
@@ -118,8 +118,8 @@ export function App() {
         <PermissionScreen
           title={unsupported.title}
           message={unsupported.message}
-          actionLabel={session.error?.code === 'camera' ? 'Enable camera' : 'Back'}
-          onAction={session.error?.code === 'camera' ? enterAr : leaveAr}
+          actionLabel={session.error?.code === 'camera' ? 'Enable camera' : 'Try again'}
+          onAction={session.error?.code === 'camera' || session.error?.code === 'engine' ? enterAr : leaveAr}
           onBack={leaveAr}
         />
       ) : null}

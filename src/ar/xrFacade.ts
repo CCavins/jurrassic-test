@@ -3,7 +3,7 @@ import { canAttemptWorldTracking } from '../utils/device'
 import { captureStillFromCanvas, createCanvasRecorder, MAX_MS } from './captureManager'
 import { DesktopPreview } from './desktopFallback'
 import { ArEmitter } from './events'
-import { createScenePipeline, loadXrEngine, screenshotModule } from './xrEngine'
+import { exposeThreeGlobal, createScenePipeline, loadXrEngine, screenshotModule } from './xrEngine'
 import { XrWorldScene } from './xrScene'
 
 export type SessionMode = 'xr' | 'desktop'
@@ -36,9 +36,18 @@ class XrFacade {
 
       const useXr = canAttemptWorldTracking()
       if (useXr) {
-        const started = await this.startXr(host, config, generation)
-        if (!started || generation !== this.generation) return null
-        this.mode = 'xr'
+        try {
+          const started = await this.startXr(host, config, generation)
+          if (!started || generation !== this.generation) return null
+          this.mode = 'xr'
+        } catch (error) {
+          this.events.emit('loading', { message: null })
+          this.canvas?.remove()
+          this.world?.dispose()
+          this.world = null
+          this.canvas = null
+          throw error
+        }
       } else {
         this.desktop = new DesktopPreview(host, this.events)
         this.canvas = this.desktop.canvas
@@ -124,6 +133,7 @@ class XrFacade {
 
   private async startXr(host: HTMLElement, config: DinosaurConfig, generation: number): Promise<boolean> {
     this.events.emit('loading', { message: 'Preparing the expedition' })
+    exposeThreeGlobal()
     const XR8 = await loadXrEngine()
     if (generation !== this.generation) return false
     XR8.XrController.configure({

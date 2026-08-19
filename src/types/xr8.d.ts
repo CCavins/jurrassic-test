@@ -113,6 +113,7 @@ export interface XR8Api {
 declare global {
   interface Window {
     XR8?: XR8Api
+    THREE?: typeof import('three')
   }
 }
 
