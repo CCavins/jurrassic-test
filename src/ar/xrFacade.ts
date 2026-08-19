@@ -18,10 +18,12 @@ class XrFacade {
   private canvasRecorder: ReturnType<typeof createCanvasRecorder> | null = null
   private xrModulesReady = false
   private starting = false
+  private generation = 0
 
-  async start(host: HTMLElement, config: DinosaurConfig): Promise<SessionMode> {
-    if (this.starting) return this.mode ?? 'desktop'
+  async start(host: HTMLElement, config: DinosaurConfig): Promise<SessionMode | null> {
+    if (this.starting) return this.mode
     this.starting = true
+    const generation = ++this.generation
     try {
       if (this.running && this.mode === 'xr' && this.world) {
         await this.world.prepare(config)
@@ -34,19 +36,21 @@ class XrFacade {
 
       const useXr = canAttemptWorldTracking()
       if (useXr) {
-        await this.startXr(host, config)
+        const started = await this.startXr(host, config, generation)
+        if (!started || generation !== this.generation) return null
         this.mode = 'xr'
       } else {
         this.desktop = new DesktopPreview(host, this.events)
         this.canvas = this.desktop.canvas
         await this.desktop.load(config)
+        if (generation !== this.generation) return null
         this.mode = 'desktop'
         this.events.emit('ready', { mode: 'desktop' })
       }
       this.running = true
       return this.mode
     } finally {
-      this.starting = false
+      if (generation === this.generation) this.starting = false
     }
   }
 
@@ -97,14 +101,18 @@ class XrFacade {
   }
 
   stop(): void {
-    if (this.mode === 'xr' && window.XR8) {
+    this.generation += 1
+    this.starting = false
+    this.events.emit('loading', { message: null })
+    this.events.emit('coaching', { message: null, phase: 'ready' })
+    if (window.XR8) {
       try {
         window.XR8.stop()
       } catch {
         // XR8.stop can throw if the camera never fully started.
       }
-      this.world?.dispose()
     }
+    this.world?.dispose()
     this.desktop?.dispose()
     this.canvas?.remove()
     this.world = null
@@ -114,9 +122,10 @@ class XrFacade {
     this.mode = null
   }
 
-  private async startXr(host: HTMLElement, config: DinosaurConfig): Promise<void> {
+  private async startXr(host: HTMLElement, config: DinosaurConfig, generation: number): Promise<boolean> {
     this.events.emit('loading', { message: 'Preparing the expedition' })
     const XR8 = await loadXrEngine()
+    if (generation !== this.generation) return false
     XR8.XrController.configure({
       scale: 'absolute',
       enableLighting: true,
@@ -130,6 +139,7 @@ class XrFacade {
 
     this.world = new XrWorldScene(this.events)
     await this.world.prepare(config)
+    if (generation !== this.generation) return false
 
     const canvas = document.createElement('canvas')
     canvas.id = 'camerafeed'
@@ -153,6 +163,7 @@ class XrFacade {
         onUpdate: (engine, reality) => this.world?.onUpdate(engine, reality),
         onCameraStatus: (status) => {
           if (status === 'failed') {
+            this.events.emit('loading', { message: null })
             this.events.emit('error', {
               code: 'camera',
               title: 'Camera access required',
@@ -173,6 +184,7 @@ class XrFacade {
       cameraConfig: { direction: XR8.XrConfig.camera().BACK },
       allowedDevices: XR8.XrConfig.device().MOBILE,
     })
+    return true
   }
 }
 

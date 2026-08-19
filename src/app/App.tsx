@@ -10,18 +10,15 @@ import { LoadingScreen } from '../components/LoadingScreen/LoadingScreen'
 import { PermissionScreen } from '../components/PermissionScreen/PermissionScreen'
 import { useARSession } from '../hooks/useARSession'
 import { canAttemptWorldTracking, hasWebGl, isSecureContextRequired } from '../utils/device'
+import { cameraErrorFrom, requestArPermissions } from '../utils/permissions'
 import { publicUrl } from '../utils/paths'
 import type { AppScreen } from './appState'
 
 export function App() {
   const [screen, setScreen] = useState<AppScreen>('home')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [startToken, setStartToken] = useState(0)
   const hostRef = useRef<HTMLDivElement>(null)
   const session = useARSession()
-  const startSession = session.start
-  const startRef = useRef(startSession)
-  startRef.current = startSession
   const dinosaur = selectedId ? getDinosaur(selectedId) : undefined
 
   useEffect(() => {
@@ -31,19 +28,29 @@ export function App() {
     document.documentElement.style.setProperty('--texture-image', `url("${texture}")`)
   }, [])
 
-  useEffect(() => {
-    if (screen !== 'ar' || startToken === 0 || !dinosaur) return
-    const host = hostRef.current
-    if (!host) return
-    if (!hasWebGl()) return
-    void startRef.current(host, dinosaur).catch(() => undefined)
-  }, [screen, startToken, dinosaur])
-
   const enterAr = () => {
     if (!dinosaur) return
+    const host = hostRef.current
+    if (!host || !hasWebGl()) return
     session.clearError()
-    setScreen('ar')
-    setStartToken((value) => value + 1)
+    const cameraPrompt = canAttemptWorldTracking() ? requestArPermissions() : Promise.resolve()
+    void cameraPrompt
+      .then(() => {
+        setScreen('ar')
+        return session.start(host, dinosaur)
+      })
+      .catch((error: unknown) => {
+        setScreen('ar')
+        session.reportError(cameraErrorFrom(error))
+      })
+  }
+
+  const leaveAr = () => {
+    if (session.loading || !session.mode) {
+      void session.stop()
+    }
+    session.clearError()
+    setScreen('select')
   }
 
   const goHome = () => {
@@ -96,7 +103,7 @@ export function App() {
             elapsedMs={session.recording.elapsedMs}
             maxMs={session.recording.maxMs}
             emphasizeRecenter={session.tracking === 'LIMITED'}
-            onBack={() => setScreen('select')}
+            onBack={leaveAr}
             onRecenter={() => void session.recenter()}
             onPhoto={() => void session.takePhoto()}
             onHoldStart={() => void session.startRecording()}
@@ -105,15 +112,15 @@ export function App() {
         </div>
       ) : null}
 
-      {session.loading ? <LoadingScreen message={session.loading} /> : null}
+      {screen === 'ar' && session.loading && !session.capture ? <LoadingScreen message={session.loading} /> : null}
 
       {screen === 'ar' && unsupported ? (
         <PermissionScreen
           title={unsupported.title}
           message={unsupported.message}
           actionLabel={session.error?.code === 'camera' ? 'Enable camera' : 'Back'}
-          onAction={session.error?.code === 'camera' ? enterAr : () => setScreen('select')}
-          onBack={() => setScreen('select')}
+          onAction={session.error?.code === 'camera' ? enterAr : leaveAr}
+          onBack={leaveAr}
         />
       ) : null}
 

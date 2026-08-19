@@ -50,6 +50,7 @@ export function useARSession() {
     capture,
     error,
     clearError: () => setError(null),
+    reportError: (next: { code: string; title: string; message: string }) => setError(next),
     clearCapture: () => {
       if (capture?.url) URL.revokeObjectURL(capture.url)
       setCapture(null)
@@ -60,6 +61,12 @@ export function useARSession() {
     startRecording: async () => (await facade()).startRecording(),
     stopRecording: async () => (await facade()).stopRecording(),
     recenter: async () => (await facade()).recenter(),
-    stop: async () => (await facade()).stop(),
+    stop: async () => {
+      setLoading(null)
+      setCoaching(null)
+      setTracking('UNKNOWN')
+      setMode(null)
+      await (await facade()).stop()
+    },
   }
 }
