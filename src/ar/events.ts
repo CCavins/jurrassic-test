@@ -21,8 +21,8 @@ export interface CaptureMedia {
 
 export type ArEventMap = {
   tracking: { status: TrackingStatus; reason?: string }
-  coaching: { message: string | null; phase: 'space' | 'scan' | 'ready' | 'lost' }
-  placed: { id: string }
+  coaching: { message: string | null; phase: 'space' | 'scan' | 'place' | 'ready' | 'lost' }
+  placed: { id: string; placed: boolean }
   selected: { selected: boolean }
   loading: { message: string | null }
   error: { code: string; title: string; message: string }

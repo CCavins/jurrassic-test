@@ -4,7 +4,7 @@ import type { XR8Api, XR8Reality } from '../types/xr8'
 import { captureStillFromXr, MAX_MS } from './captureManager'
 import { DinosaurInteraction } from './dinosaurInteraction'
 import { DinosaurManager } from './dinosaurManager'
-import { placeInFrontOfCamera } from './dinosaurPlacement'
+import { screenToGround } from './dinosaurPlacement'
 import type { ArEmitter, TrackingStatus } from './events'
 
 export class XrWorldScene {
@@ -22,6 +22,7 @@ export class XrWorldScene {
   private pendingConfig: DinosaurConfig | null = null
   private canvas: HTMLCanvasElement | null = null
   private events: ArEmitter
+  private alignedFloor = false
 
   constructor(events: ArEmitter) {
     this.events = events
@@ -45,12 +46,13 @@ export class XrWorldScene {
     const renderer = XR8.Threejs.xrScene().renderer
     this.canvas = renderer.domElement
     this.bindCanvas(this.canvas)
+    this.alignedFloor = false
     this.events.emit('coaching', { phase: 'space', message: 'Find some open space' })
     window.setTimeout(() => {
       if (!this.placed) {
-        this.events.emit('coaching', { phase: 'scan', message: 'Move your phone slowly to find the ground' })
+        this.events.emit('coaching', { phase: 'place', message: 'Point at the ground, then tap to place' })
       }
-    }, 1600)
+    }, 1400)
     if (this.pendingConfig) void this.loadDinosaur(this.pendingConfig)
   }
 
@@ -61,12 +63,8 @@ export class XrWorldScene {
     if (reality?.lighting?.exposure !== undefined) {
       this.manager.applyExposure(reality.lighting.exposure)
     }
-    if (!this.placed && this.tracking === 'NORMAL' && this.manager.model) {
-      placeInFrontOfCamera(this.manager.anchor, camera, this.manager.lengthMeters)
-      this.placed = true
-      this.events.emit('placed', { id: this.manager.config?.id ?? '' })
-      this.events.emit('coaching', { phase: 'ready', message: 'Tap and drag the dinosaur to move it' })
-    }
+    this.alignFloor(XR8)
+    this.manager.anchor.position.y = 0
     this.tickFps()
     this.events.emit('debug', {
       fps: this.fps,
@@ -98,18 +96,48 @@ export class XrWorldScene {
     } else {
       this.limitedSince = null
       if (this.placed) this.events.emit('coaching', { phase: 'ready', message: null })
+      else this.events.emit('coaching', { phase: 'place', message: 'Point at the ground, then tap to place' })
     }
+  }
+
+  placeAt(clientX: number, clientY: number): boolean {
+    if (!this.canvas || !this.manager.model || !window.XR8) return false
+    const { camera } = window.XR8.Threejs.xrScene()
+    const hit = screenToGround(clientX, clientY, this.canvas.getBoundingClientRect(), camera, 0)
+    if (!hit) {
+      this.events.emit('coaching', { phase: 'place', message: 'Point the camera at the ground, then tap' })
+      return false
+    }
+    this.manager.revealAt(hit.x, hit.z, 0)
+    this.manager.anchor.lookAt(camera.position.x, 0, camera.position.z)
+    this.placed = true
+    this.events.emit('placed', { id: this.manager.config?.id ?? '', placed: true })
+    this.events.emit('coaching', { phase: 'ready', message: 'Tap and drag the dinosaur to move it' })
+    return true
   }
 
   recenter(XR8: XR8Api): void {
     const { camera } = XR8.Threejs.xrScene()
     XR8.XrController.updateCameraProjectionMatrix({
-      origin: { x: 0, y: camera.position.y, z: 0 },
+      origin: { x: camera.position.x, y: 1.6, z: camera.position.z },
       facing: camera.quaternion,
     })
     XR8.XrController.recenter()
+    this.alignedFloor = true
     this.placed = false
-    this.events.emit('coaching', { phase: 'scan', message: 'Move your phone slowly to find the ground' })
+    this.manager.hideForPlacement()
+    this.events.emit('placed', { id: '', placed: false })
+    this.events.emit('coaching', { phase: 'place', message: 'Point at the ground, then tap to place' })
+  }
+
+  private alignFloor(XR8: XR8Api): void {
+    if (this.alignedFloor || this.tracking !== 'NORMAL' || this.placed) return
+    const { camera } = XR8.Threejs.xrScene()
+    XR8.XrController.updateCameraProjectionMatrix({
+      origin: { x: camera.position.x, y: 1.6, z: camera.position.z },
+      facing: camera.quaternion,
+    })
+    this.alignedFloor = true
   }
 
   async takePhoto(): Promise<void> {
@@ -169,7 +197,9 @@ export class XrWorldScene {
     try {
       await this.manager.load(config)
       this.placed = false
+      this.events.emit('placed', { id: '', placed: false })
       this.events.emit('loading', { message: null })
+      this.events.emit('coaching', { phase: 'place', message: 'Point at the ground, then tap to place' })
     } catch {
       this.events.emit('error', {
         code: 'model',
@@ -195,6 +225,10 @@ export class XrWorldScene {
 
   private onDown = (event: PointerEvent) => {
     if (!this.canvas || !window.XR8) return
+    if (!this.placed) {
+      this.placeAt(event.clientX, event.clientY)
+      return
+    }
     const { camera } = window.XR8.Threejs.xrScene()
     const hit = this.interaction.pointerDown(event.clientX, event.clientY, this.canvas, camera, this.manager.model)
     if (hit) this.canvas.setPointerCapture(event.pointerId)

@@ -74,6 +74,7 @@ a {
   overflow: hidden;
   touch-action: none;
   user-select: none;
+  pointer-events: none;
 }
 
 .hero {
@@ -293,7 +294,22 @@ a {
   pointer-events: auto;
 }
 
+.place-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.hud-top,
+.hud-bottom {
+  z-index: 1;
+}
+
 .hud-top {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;

@@ -8,8 +8,10 @@ interface Props {
   elapsedMs: number
   maxMs: number
   emphasizeRecenter: boolean
+  awaitingPlacement: boolean
   onBack: () => void
   onRecenter: () => void
+  onPlace: (clientX: number, clientY: number) => void
   onPhoto: () => void
   onHoldStart: () => void
   onHoldEnd: () => void
@@ -23,14 +25,27 @@ export function ARHud({
   elapsedMs,
   maxMs,
   emphasizeRecenter,
+  awaitingPlacement,
   onBack,
   onRecenter,
+  onPlace,
   onPhoto,
   onHoldStart,
   onHoldEnd,
 }: Props) {
   return (
     <div className="hud">
+      {awaitingPlacement ? (
+        <button
+          className="place-layer"
+          type="button"
+          aria-label="Tap the ground to place the dinosaur"
+          onPointerDown={(event) => {
+            event.preventDefault()
+            onPlace(event.clientX, event.clientY)
+          }}
+        />
+      ) : null}
       <div className="hud-top">
         <button className="icon-btn" onClick={onBack} aria-label="Back to dinosaur selection">
           ←

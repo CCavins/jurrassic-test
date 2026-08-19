@@ -43,7 +43,18 @@ export class DinosaurManager {
     this.anchor.add(this.model)
     this.animator.attach(this.model, gltf.animations, config)
     if (this.lights) updateContactShadow(this.lights, this.widthMeters, true)
+    this.anchor.visible = false
+    this.anchor.position.y = 0
+  }
+
+  revealAt(x: number, z: number, groundY = 0): void {
+    this.anchor.position.set(x, groundY, z)
     this.anchor.visible = true
+  }
+
+  hideForPlacement(): void {
+    this.anchor.visible = false
+    this.anchor.position.y = 0
   }
 
   update(delta: number): string {

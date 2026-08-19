@@ -14,6 +14,7 @@ export function useARSession() {
   const [coaching, setCoaching] = useState<string | null>(null)
   const [tracking, setTracking] = useState<TrackingStatus>('UNKNOWN')
   const [selected, setSelected] = useState(false)
+  const [placed, setPlaced] = useState(false)
   const [recording, setRecording] = useState({ active: false, elapsedMs: 0, maxMs: 15000 })
   const [capture, setCapture] = useState<CaptureMedia | null>(null)
   const [error, setError] = useState<{ code: string; title: string; message: string } | null>(null)
@@ -29,6 +30,7 @@ export function useARSession() {
         xr.events.on('coaching', ({ message }) => setCoaching(message)),
         xr.events.on('tracking', ({ status }) => setTracking(status)),
         xr.events.on('selected', ({ selected: next }) => setSelected(next)),
+        xr.events.on('placed', ({ placed: next }) => setPlaced(next)),
         xr.events.on('recording', setRecording),
         xr.events.on('capture', setCapture),
         xr.events.on('error', setError),
@@ -46,6 +48,7 @@ export function useARSession() {
     coaching,
     tracking,
     selected,
+    placed,
     recording,
     capture,
     error,
@@ -61,11 +64,13 @@ export function useARSession() {
     startRecording: async () => (await facade()).startRecording(),
     stopRecording: async () => (await facade()).stopRecording(),
     recenter: async () => (await facade()).recenter(),
+    placeAt: async (clientX: number, clientY: number) => (await facade()).placeAt(clientX, clientY),
     stop: async () => {
       setLoading(null)
       setCoaching(null)
       setTracking('UNKNOWN')
       setMode(null)
+      setPlaced(false)
       await (await facade()).stop()
     },
   }

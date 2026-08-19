@@ -13,10 +13,14 @@ export class DinosaurAnimator {
   private nextAmbientAt = 0
   private returning = false
   private groundOffset = 0
+  private lockedFootY: number | null = null
+  private groundSamples = 0
 
   attach(root: Object3D, clips: AnimationClip[], config: DinosaurConfig): void {
     this.dispose()
     this.groundOffset = config.groundOffset ?? 0
+    this.lockedFootY = null
+    this.groundSamples = 0
     this.mixer = new AnimationMixer(root)
     this.idle = config.defaultAnimation
     this.ambient = config.ambientAnimations.filter((name) => !LOCOMOTION.test(name))
@@ -40,7 +44,15 @@ export class DinosaurAnimator {
 
   update(delta: number, root: Object3D): string {
     this.mixer?.update(delta)
-    snapFeetToGround(root, this.groundOffset)
+    root.position.x = 0
+    root.position.z = 0
+    if (this.lockedFootY === null || this.groundSamples < 12) {
+      snapFeetToGround(root, this.groundOffset)
+      this.lockedFootY = root.position.y
+      this.groundSamples += 1
+    } else {
+      root.position.y = this.lockedFootY
+    }
 
     const now = performance.now()
     if (!this.returning && this.ambient.length > 0 && now >= this.nextAmbientAt && this.current === this.idle) {
@@ -65,6 +77,8 @@ export class DinosaurAnimator {
     this.mixer = null
     this.actions.clear()
     this.current = ''
+    this.lockedFootY = null
+    this.groundSamples = 0
   }
 
   private crossfade(name: string, duration: number): void {

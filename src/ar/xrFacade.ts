@@ -110,6 +110,12 @@ class XrFacade {
     if (this.mode === 'xr' && this.world && window.XR8) this.world.recenter(window.XR8)
   }
 
+  placeAt(clientX: number, clientY: number): boolean {
+    if (this.mode === 'xr' && this.world) return this.world.placeAt(clientX, clientY)
+    if (this.mode === 'desktop' && this.desktop) return this.desktop.placeAt(clientX, clientY)
+    return false
+  }
+
   stop(): void {
     this.generation += 1
     this.starting = false

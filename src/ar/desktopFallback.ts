@@ -11,7 +11,7 @@ import {
 import type { DinosaurConfig } from '../config/dinosaurs'
 import { DinosaurInteraction } from './dinosaurInteraction'
 import { DinosaurManager } from './dinosaurManager'
-import { placeInFrontOfCamera } from './dinosaurPlacement'
+import { screenToGround } from './dinosaurPlacement'
 import type { ArEmitter } from './events'
 import { captureStillFromCanvas, createCanvasRecorder, MAX_MS } from './captureManager'
 
@@ -31,6 +31,7 @@ export class DesktopPreview {
   private frames = 0
   private fpsAt = performance.now()
   private fps = 0
+  private placed = false
 
   constructor(
     host: HTMLElement,
@@ -64,12 +65,27 @@ export class DesktopPreview {
   async load(config: DinosaurConfig): Promise<void> {
     this.events.emit('loading', { message: `Summoning ${config.name}` })
     await this.manager.load(config)
-    placeInFrontOfCamera(this.manager.anchor, this.camera, this.manager.lengthMeters)
-    this.camera.position.set(0, Math.max(1.6, this.manager.lengthMeters * 0.18), Math.max(6, this.manager.lengthMeters * 0.85))
-    this.camera.lookAt(this.manager.anchor.position.x, this.manager.lengthMeters * 0.12, this.manager.anchor.position.z)
+    this.placed = false
+    this.camera.position.set(0, 4.2, 14)
+    this.camera.lookAt(0, 0, 0)
     this.events.emit('loading', { message: null })
-    this.events.emit('placed', { id: config.id })
+    this.events.emit('placed', { id: '', placed: false })
+    this.events.emit('coaching', { phase: 'place', message: 'Tap the ground to place the dinosaur' })
+  }
+
+  placeAt(clientX: number, clientY: number): boolean {
+    if (!this.manager.model) return false
+    const hit = screenToGround(clientX, clientY, this.canvas.getBoundingClientRect(), this.camera, 0)
+    if (!hit) {
+      this.events.emit('coaching', { phase: 'place', message: 'Tap the ground to place the dinosaur' })
+      return false
+    }
+    this.manager.revealAt(hit.x, hit.z, 0)
+    this.manager.anchor.lookAt(this.camera.position.x, 0, this.camera.position.z)
+    this.placed = true
+    this.events.emit('placed', { id: this.manager.config?.id ?? '', placed: true })
     this.events.emit('coaching', { phase: 'ready', message: 'Tap and drag the dinosaur to move it' })
+    return true
   }
 
   async takePhoto(): Promise<void> {
@@ -111,6 +127,10 @@ export class DesktopPreview {
   }
 
   private onDown = (event: PointerEvent) => {
+    if (!this.placed) {
+      this.placeAt(event.clientX, event.clientY)
+      return
+    }
     const hit = this.interaction.pointerDown(event.clientX, event.clientY, this.canvas, this.camera, this.manager.model)
     if (hit) this.canvas.setPointerCapture(event.pointerId)
     this.events.emit('selected', { selected: this.interaction.selected })

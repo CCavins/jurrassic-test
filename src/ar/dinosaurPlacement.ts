@@ -1,9 +1,13 @@
-import { Box3, Group, Mesh, SkinnedMesh, Vector3, type Camera, type Object3D } from 'three'
+import { Box3, Group, Mesh, Plane, Raycaster, SkinnedMesh, Vector2, Vector3, type Camera, type Object3D } from 'three'
 import type { DinosaurConfig } from '../config/dinosaurs'
 
 const box = new Box3()
 const meshBox = new Box3()
 const size = new Vector3()
+const ndc = new Vector2()
+const raycaster = new Raycaster()
+const groundHit = new Vector3()
+const groundPlane = new Plane()
 
 export function worldBounds(root: Object3D): Box3 {
   box.makeEmpty()
@@ -11,6 +15,7 @@ export function worldBounds(root: Object3D): Box3 {
   root.traverse((child) => {
     if (!(child instanceof Mesh) || !child.visible || child.name === 'contact-shadow') return
     if (child instanceof SkinnedMesh) {
+      child.skeleton?.update()
       child.computeBoundingBox()
       if (!child.boundingBox || child.boundingBox.isEmpty()) return
       meshBox.copy(child.boundingBox).applyMatrix4(child.matrixWorld)
@@ -50,6 +55,31 @@ export function normalizeDinosaur(model: Object3D, config: DinosaurConfig): { le
 
   worldBounds(model).getSize(size)
   return { length: size.z, width: size.x, height: size.y }
+}
+
+export function screenToGround(
+  clientX: number,
+  clientY: number,
+  rect: DOMRect,
+  camera: Camera,
+  groundY = 0,
+): Vector3 | null {
+  if (rect.width <= 0 || rect.height <= 0) return null
+  ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1
+  ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(ndc, camera)
+  groundPlane.setFromNormalAndCoplanarPoint(new Vector3(0, 1, 0), new Vector3(0, groundY, 0))
+  if (!raycaster.ray.intersectPlane(groundPlane, groundHit)) return null
+  if (raycaster.ray.direction.dot(new Vector3().subVectors(groundHit, camera.position)) < 0) return null
+  const sideways = Math.hypot(groundHit.x - camera.position.x, groundHit.z - camera.position.z)
+  if (sideways < 0.6) return null
+  if (sideways > 36) {
+    const scale = 36 / sideways
+    groundHit.x = camera.position.x + (groundHit.x - camera.position.x) * scale
+    groundHit.z = camera.position.z + (groundHit.z - camera.position.z) * scale
+  }
+  groundHit.y = groundY
+  return groundHit.clone()
 }
 
 export function placeInFrontOfCamera(

@@ -103,8 +103,10 @@ export function App() {
             elapsedMs={session.recording.elapsedMs}
             maxMs={session.recording.maxMs}
             emphasizeRecenter={session.tracking === 'LIMITED'}
+            awaitingPlacement={!session.placed && !session.loading}
             onBack={leaveAr}
             onRecenter={() => void session.recenter()}
+            onPlace={(clientX, clientY) => void session.placeAt(clientX, clientY)}
             onPhoto={() => void session.takePhoto()}
             onHoldStart={() => void session.startRecording()}
             onHoldEnd={() => void session.stopRecording()}
