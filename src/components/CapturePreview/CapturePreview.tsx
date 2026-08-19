@@ -1,7 +1,6 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import type { CaptureMedia } from '../../ar/events'
-import { downloadBlob, shareOrDownload } from '../../utils/share'
-import { captureFileName } from '../../utils/media'
+import { shareOrDownload } from '../../utils/share'
 
 interface Props {
   media: CaptureMedia
@@ -11,22 +10,16 @@ interface Props {
 export function CapturePreview({ media, onTryAgain }: Props) {
   const video = useRef<HTMLVideoElement>(null)
 
-  const replay = () => {
-    if (!video.current) return
-    video.current.currentTime = 0
-    void video.current.play()
-  }
-
-  const share = async () => {
-    await shareOrDownload(media.blob, media.kind)
-  }
-
-  const download = () => {
-    const file = new File([media.blob], captureFileName(media.kind, media.blob.type), {
-      type: media.blob.type,
-    })
-    downloadBlob(file)
-  }
+  useEffect(() => {
+    if (media.kind !== 'video' || !video.current) return
+    const player = video.current
+    player.muted = true
+    player.currentTime = 0
+    const play = () => void player.play().catch(() => undefined)
+    play()
+    player.addEventListener('loadeddata', play)
+    return () => player.removeEventListener('loadeddata', play)
+  }, [media.kind, media.url])
 
   return (
     <section className="preview" role="dialog" aria-label="Capture preview">
@@ -34,15 +27,22 @@ export function CapturePreview({ media, onTryAgain }: Props) {
         {media.kind === 'photo' ? (
           <img src={media.url} alt="Captured Jurassic Adventure photo" />
         ) : (
-          <video ref={video} src={media.url} playsInline muted controls onClick={replay} />
+          <video
+            ref={video}
+            className="preview-video"
+            src={media.url}
+            autoPlay
+            muted
+            loop
+            playsInline
+            disablePictureInPicture
+            controls={false}
+          />
         )}
       </div>
       <div className="preview-actions">
-        <button className="btn btn-primary" onClick={share}>
+        <button className="btn btn-primary" onClick={() => void shareOrDownload(media.blob, media.kind)}>
           Save / Share
-        </button>
-        <button className="btn btn-secondary" onClick={download}>
-          Download
         </button>
         <button className="btn btn-ghost" onClick={onTryAgain}>
           Try again

@@ -1,4 +1,4 @@
-import { Clock } from 'three'
+import { Clock, Quaternion, Vector3 } from 'three'
 import type { DinosaurConfig } from '../config/dinosaurs'
 import type { XR8Api, XR8Reality } from '../types/xr8'
 import { captureStillFromXr, MAX_MS } from './captureManager'
@@ -22,7 +22,14 @@ export class XrWorldScene {
   private pendingConfig: DinosaurConfig | null = null
   private canvas: HTMLCanvasElement | null = null
   private events: ArEmitter
-  private alignedFloor = false
+  private rawCamPos = new Vector3()
+  private rawCamQuat = new Quaternion()
+  private lastRawPos = new Vector3()
+  private lastRawQuat = new Quaternion()
+  private smoothCamPos = new Vector3()
+  private smoothCamQuat = new Quaternion()
+  private hasCamSample = false
+  private settleFrames = 0
 
   constructor(events: ArEmitter) {
     this.events = events
@@ -46,7 +53,7 @@ export class XrWorldScene {
     const renderer = XR8.Threejs.xrScene().renderer
     this.canvas = renderer.domElement
     this.bindCanvas(this.canvas)
-    this.alignedFloor = false
+    this.resetCameraSmoothing()
     this.events.emit('coaching', { phase: 'space', message: 'Find some open space' })
     window.setTimeout(() => {
       if (!this.placed) {
@@ -63,7 +70,7 @@ export class XrWorldScene {
     if (reality?.lighting?.exposure !== undefined) {
       this.manager.applyExposure(reality.lighting.exposure)
     }
-    this.alignFloor(XR8)
+    this.stabilizeCamera(camera)
     this.manager.anchor.position.y = 0
     this.tickFps()
     this.events.emit('debug', {
@@ -123,21 +130,46 @@ export class XrWorldScene {
       facing: camera.quaternion,
     })
     XR8.XrController.recenter()
-    this.alignedFloor = true
+    this.resetCameraSmoothing()
     this.placed = false
     this.manager.hideForPlacement()
     this.events.emit('placed', { id: '', placed: false })
     this.events.emit('coaching', { phase: 'place', message: 'Point at the ground, then tap to place' })
   }
 
-  private alignFloor(XR8: XR8Api): void {
-    if (this.alignedFloor || this.tracking !== 'NORMAL' || this.placed) return
-    const { camera } = XR8.Threejs.xrScene()
-    XR8.XrController.updateCameraProjectionMatrix({
-      origin: { x: camera.position.x, y: 1.6, z: camera.position.z },
-      facing: camera.quaternion,
-    })
-    this.alignedFloor = true
+  private resetCameraSmoothing(): void {
+    this.hasCamSample = false
+    this.settleFrames = 0
+  }
+
+  private stabilizeCamera(camera: { position: Vector3; quaternion: Quaternion }): void {
+    this.rawCamPos.copy(camera.position)
+    this.rawCamQuat.copy(camera.quaternion)
+    if (!this.hasCamSample) {
+      this.lastRawPos.copy(this.rawCamPos)
+      this.lastRawQuat.copy(this.rawCamQuat)
+      this.smoothCamPos.copy(this.rawCamPos)
+      this.smoothCamQuat.copy(this.rawCamQuat)
+      this.hasCamSample = true
+      return
+    }
+
+    const jumped = this.lastRawPos.distanceTo(this.rawCamPos) > 0.28 || this.lastRawQuat.angleTo(this.rawCamQuat) > 0.22
+    if (jumped || this.tracking !== 'NORMAL') this.settleFrames = Math.max(this.settleFrames, jumped ? 20 : 12)
+    this.lastRawPos.copy(this.rawCamPos)
+    this.lastRawQuat.copy(this.rawCamQuat)
+
+    if (this.settleFrames > 0) {
+      this.smoothCamPos.lerp(this.rawCamPos, 0.16)
+      this.smoothCamQuat.slerp(this.rawCamQuat, 0.16)
+      camera.position.copy(this.smoothCamPos)
+      camera.quaternion.copy(this.smoothCamQuat)
+      this.settleFrames -= 1
+      return
+    }
+
+    this.smoothCamPos.copy(this.rawCamPos)
+    this.smoothCamQuat.copy(this.rawCamQuat)
   }
 
   async takePhoto(): Promise<void> {

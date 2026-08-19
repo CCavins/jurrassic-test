@@ -19,8 +19,23 @@ export function createFullWindowCanvasModule(): XR8PipelineModule {
   let videoWidth = 0
   let videoHeight = 0
   let orientation = readOrientation()
+  let lastCssWidth = 0
+  let lastCssHeight = 0
+  let resizeTimer = 0
 
-  const fill = () => {
+  const applyStyles = (target: HTMLCanvasElement) => {
+    target.style.position = 'absolute'
+    target.style.inset = '0'
+    target.style.width = '100%'
+    target.style.height = '100%'
+    target.style.margin = '0'
+    target.style.padding = '0'
+    target.style.border = '0'
+    target.style.display = 'block'
+    target.style.objectFit = 'cover'
+  }
+
+  const fill = (force = false) => {
     if (!canvas) return
 
     const css = viewportCssSize()
@@ -28,7 +43,17 @@ export function createFullWindowCanvasModule(): XR8PipelineModule {
     const pixelHeight = Math.max(1, Math.round(css.height * devicePixelRatio))
     const portrait = Math.abs(orientation) !== 90
     if ((portrait && pixelWidth > pixelHeight) || (!portrait && pixelHeight > pixelWidth)) {
-      window.requestAnimationFrame(fill)
+      window.requestAnimationFrame(() => fill(force))
+      return
+    }
+
+    if (
+      !force &&
+      lastCssWidth > 0 &&
+      Math.abs(css.width - lastCssWidth) < 32 &&
+      Math.abs(css.height - lastCssHeight) < 64
+    ) {
+      applyStyles(canvas)
       return
     }
 
@@ -54,24 +79,26 @@ export function createFullWindowCanvasModule(): XR8PipelineModule {
       cropHeight = swapped
     }
 
-    canvas.style.position = 'absolute'
-    canvas.style.inset = '0'
-    canvas.style.width = '100%'
-    canvas.style.height = '100%'
-    canvas.style.margin = '0'
-    canvas.style.padding = '0'
-    canvas.style.border = '0'
-    canvas.style.display = 'block'
-    canvas.style.objectFit = 'cover'
-    canvas.width = cropWidth
-    canvas.height = cropHeight
+    applyStyles(canvas)
+    if (canvas.width !== cropWidth || canvas.height !== cropHeight) {
+      canvas.width = cropWidth
+      canvas.height = cropHeight
+    }
+    lastCssWidth = css.width
+    lastCssHeight = css.height
+  }
+
+  const scheduleFill = () => {
+    window.clearTimeout(resizeTimer)
+    resizeTimer = window.setTimeout(() => fill(false), 180)
   }
 
   const setVideoSize = (nextWidth: number, nextHeight: number) => {
     if (!nextWidth || !nextHeight) return
+    const changed = nextWidth !== videoWidth || nextHeight !== videoHeight
     videoWidth = nextWidth
     videoHeight = nextHeight
-    fill()
+    if (changed) fill(true)
   }
 
   return {
@@ -81,17 +108,20 @@ export function createFullWindowCanvasModule(): XR8PipelineModule {
       orientation = nextOrientation ?? readOrientation()
       document.documentElement.classList.add('is-ar')
       setVideoSize(width ?? 0, height ?? 0)
-      fill()
-      window.visualViewport?.addEventListener('resize', fill)
-      window.addEventListener('resize', fill)
+      fill(true)
+      window.visualViewport?.addEventListener('resize', scheduleFill)
+      window.addEventListener('resize', scheduleFill)
     },
     onDetach: () => {
       document.documentElement.classList.remove('is-ar')
-      window.visualViewport?.removeEventListener('resize', fill)
-      window.removeEventListener('resize', fill)
+      window.visualViewport?.removeEventListener('resize', scheduleFill)
+      window.removeEventListener('resize', scheduleFill)
+      window.clearTimeout(resizeTimer)
       canvas = null
       videoWidth = 0
       videoHeight = 0
+      lastCssWidth = 0
+      lastCssHeight = 0
     },
     onCameraStatusChange: ({ status, video }) => {
       if (status === 'hasVideo' && video) setVideoSize(video.videoWidth, video.videoHeight)
@@ -99,12 +129,9 @@ export function createFullWindowCanvasModule(): XR8PipelineModule {
     onVideoSizeChange: ({ videoWidth: width, videoHeight: height }) => setVideoSize(width, height),
     onDeviceOrientationChange: ({ orientation: next }) => {
       orientation = next
-      fill()
-    },
-    onCanvasSizeChange: fill,
-    onUpdate: () => {
-      if (!canvas) return
-      if (canvas.style.width !== '100%' || canvas.style.height !== '100%') fill()
+      lastCssWidth = 0
+      lastCssHeight = 0
+      fill(true)
     },
   }
 }
