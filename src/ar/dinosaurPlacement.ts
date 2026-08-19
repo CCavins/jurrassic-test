@@ -1,8 +1,39 @@
-import { Box3, Group, Vector3, type Camera, type Object3D } from 'three'
+import { Box3, Group, Mesh, SkinnedMesh, Vector3, type Camera, type Object3D } from 'three'
 import type { DinosaurConfig } from '../config/dinosaurs'
 
 const box = new Box3()
+const meshBox = new Box3()
 const size = new Vector3()
+
+export function worldBounds(root: Object3D): Box3 {
+  box.makeEmpty()
+  root.updateMatrixWorld(true)
+  root.traverse((child) => {
+    if (!(child instanceof Mesh) || !child.visible || child.name === 'contact-shadow') return
+    if (child instanceof SkinnedMesh) {
+      child.computeBoundingBox()
+      if (!child.boundingBox || child.boundingBox.isEmpty()) return
+      meshBox.copy(child.boundingBox).applyMatrix4(child.matrixWorld)
+    } else {
+      if (!child.geometry) return
+      if (!child.geometry.boundingBox) child.geometry.computeBoundingBox()
+      if (!child.geometry.boundingBox) return
+      meshBox.copy(child.geometry.boundingBox).applyMatrix4(child.matrixWorld)
+    }
+    box.union(meshBox)
+  })
+  if (box.isEmpty()) box.setFromObject(root)
+  return box
+}
+
+export function snapFeetToGround(root: Object3D, offset = 0): void {
+  root.position.x = 0
+  root.position.z = 0
+  const bounds = worldBounds(root)
+  if (bounds.isEmpty()) return
+  root.position.y -= bounds.min.y
+  root.position.y += offset
+}
 
 export function normalizeDinosaur(model: Object3D, config: DinosaurConfig): { length: number; width: number; height: number } {
   model.scale.setScalar(1)
@@ -10,20 +41,14 @@ export function normalizeDinosaur(model: Object3D, config: DinosaurConfig): { le
   model.rotation.set(0, config.modelYawOffset ?? 0, 0)
   model.updateMatrixWorld(true)
 
-  box.setFromObject(model)
-  box.getSize(size)
+  const unscaled = worldBounds(model)
+  unscaled.getSize(size)
   const length = Math.max(size.x, size.z, 0.001)
-  const scale = config.targetLengthMeters / length
-  model.scale.setScalar(scale)
+  model.scale.setScalar(config.targetLengthMeters / length)
+  snapFeetToGround(model, config.groundOffset ?? 0)
   model.updateMatrixWorld(true)
 
-  box.setFromObject(model)
-  model.position.y -= box.min.y
-  model.position.y += config.groundOffset ?? 0
-  model.updateMatrixWorld(true)
-
-  box.setFromObject(model)
-  box.getSize(size)
+  worldBounds(model).getSize(size)
   return { length: size.z, width: size.x, height: size.y }
 }
 

@@ -3,6 +3,7 @@ import { canAttemptWorldTracking } from '../utils/device'
 import { captureStillFromCanvas, createCanvasRecorder, MAX_MS } from './captureManager'
 import { DesktopPreview } from './desktopFallback'
 import { ArEmitter } from './events'
+import { createFullWindowCanvasModule } from './fullWindowCanvas'
 import { exposeThreeGlobal, createScenePipeline, loadXrEngine, screenshotModule } from './xrEngine'
 import { XrWorldScene } from './xrScene'
 
@@ -129,6 +130,7 @@ class XrFacade {
     this.canvas = null
     this.running = false
     this.mode = null
+    document.documentElement.classList.remove('is-ar')
   }
 
   private async startXr(host: HTMLElement, config: DinosaurConfig, generation: number): Promise<boolean> {
@@ -162,6 +164,7 @@ class XrFacade {
       XR8.GlTextureRenderer.pipelineModule(),
       XR8.Threejs.pipelineModule(),
       XR8.XrController.pipelineModule(),
+      createFullWindowCanvasModule(),
       screenshotModule(XR8),
       XR8.MediaRecorder?.pipelineModule(),
       createScenePipeline({

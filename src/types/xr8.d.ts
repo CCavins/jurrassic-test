@@ -22,12 +22,28 @@ export interface XR8Reality {
 
 export interface XR8PipelineModule {
   name: string
+  onAttach?: (args: {
+    canvas: HTMLCanvasElement
+    canvasWidth?: number
+    canvasHeight?: number
+    orientation?: number
+    videoWidth?: number
+    videoHeight?: number
+  }) => void
+  onDetach?: () => void
   onStart?: (args: { canvas: HTMLCanvasElement; canvasWidth: number; canvasHeight: number }) => void
   onUpdate?: (args: {
     processCpuResult?: { reality?: XR8Reality }
   }) => void
   onRender?: () => void
-  onCameraStatusChange?: (args: { status: string; reason?: string }) => void
+  onCameraStatusChange?: (args: {
+    status: string
+    reason?: string
+    video?: { videoWidth: number; videoHeight: number }
+  }) => void
+  onVideoSizeChange?: (args: { videoWidth: number; videoHeight: number }) => void
+  onDeviceOrientationChange?: (args: { orientation: number }) => void
+  onCanvasSizeChange?: () => void
   listeners?: Array<{ event: string; process: (event: { name: string; detail: unknown }) => void }>
 }
 

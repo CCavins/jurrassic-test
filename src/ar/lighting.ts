@@ -46,6 +46,7 @@ export function createSceneLights(scene: Scene, parent: Group): SceneLights {
     new PlaneGeometry(1, 1),
     new MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
   )
+  shadow.name = 'contact-shadow'
   shadow.rotation.x = -Math.PI / 2
   shadow.position.y = 0.01
   shadow.renderOrder = -1

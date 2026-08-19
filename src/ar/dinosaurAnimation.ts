@@ -1,5 +1,6 @@
 import { AnimationMixer, LoopRepeat, type AnimationAction, type AnimationClip, type Object3D } from 'three'
 import type { DinosaurConfig } from '../config/dinosaurs'
+import { snapFeetToGround } from './dinosaurPlacement'
 
 const LOCOMOTION = /walk|run|jump|death/i
 
@@ -11,9 +12,11 @@ export class DinosaurAnimator {
   private ambient: string[] = []
   private nextAmbientAt = 0
   private returning = false
+  private groundOffset = 0
 
   attach(root: Object3D, clips: AnimationClip[], config: DinosaurConfig): void {
     this.dispose()
+    this.groundOffset = config.groundOffset ?? 0
     this.mixer = new AnimationMixer(root)
     this.idle = config.defaultAnimation
     this.ambient = config.ambientAnimations.filter((name) => !LOCOMOTION.test(name))
@@ -29,14 +32,15 @@ export class DinosaurAnimator {
     if (idleAction) {
       idleAction.reset().setLoop(LoopRepeat, Infinity).fadeIn(0.25).play()
       this.current = idleAction.getClip().name
+      this.mixer.update(1 / 30)
+      snapFeetToGround(root, this.groundOffset)
     }
     this.scheduleAmbient()
   }
 
   update(delta: number, root: Object3D): string {
     this.mixer?.update(delta)
-    root.position.x = 0
-    root.position.z = 0
+    snapFeetToGround(root, this.groundOffset)
 
     const now = performance.now()
     if (!this.returning && this.ambient.length > 0 && now >= this.nextAmbientAt && this.current === this.idle) {
