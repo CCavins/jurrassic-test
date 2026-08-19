@@ -8,6 +8,7 @@ const ndc = new Vector2()
 const raycaster = new Raycaster()
 const groundHit = new Vector3()
 const groundPlane = new Plane()
+const vertex = new Vector3()
 
 export function worldBounds(root: Object3D): Box3 {
   box.makeEmpty()
@@ -32,12 +33,54 @@ export function worldBounds(root: Object3D): Box3 {
 }
 
 export function snapFeetToGround(root: Object3D, offset = 0): void {
-  root.position.x = 0
-  root.position.z = 0
   const bounds = worldBounds(root)
   if (bounds.isEmpty()) return
   root.position.y -= bounds.min.y
   root.position.y += offset
+}
+
+export function centerOnOrigin(root: Object3D, offset = 0): void {
+  snapFeetToGround(root, offset)
+  const bounds = worldBounds(root)
+  if (bounds.isEmpty()) return
+  root.position.x -= (bounds.min.x + bounds.max.x) / 2
+  root.position.z -= (bounds.min.z + bounds.max.z) / 2
+  snapFeetToGround(root, offset)
+}
+
+export function orientDinosaur(model: Object3D, yawOffset = 0): void {
+  model.updateMatrixWorld(true)
+  worldBounds(model).getSize(size)
+  if (size.x > size.z * 1.08) {
+    model.rotateY(Math.PI / 2)
+    model.updateMatrixWorld(true)
+  }
+
+  let towardMinusZ = 0
+  let towardPlusZ = 0
+  const oriented = worldBounds(model)
+  const midZ = (oriented.min.z + oriented.max.z) / 2
+  const headY = oriented.min.y + (oriented.max.y - oriented.min.y) * 0.5
+
+  model.traverse((child) => {
+    if (!(child instanceof Mesh) || !child.visible || child.name === 'contact-shadow' || !child.geometry) return
+    const position = child.geometry.getAttribute('position')
+    if (!position) return
+    if (child instanceof SkinnedMesh) child.skeleton?.update()
+    const step = Math.max(1, Math.floor(position.count / 900))
+    for (let i = 0; i < position.count; i += step) {
+      if (child instanceof SkinnedMesh) child.getVertexPosition(i, vertex)
+      else vertex.fromBufferAttribute(position, i)
+      vertex.applyMatrix4(child.matrixWorld)
+      if (vertex.y < headY) continue
+      if (vertex.z < midZ) towardMinusZ += 1
+      else towardPlusZ += 1
+    }
+  })
+
+  if (towardPlusZ > towardMinusZ) model.rotateY(Math.PI)
+  if (yawOffset) model.rotateY(yawOffset)
+  model.updateMatrixWorld(true)
 }
 
 export function normalizeDinosaur(model: Object3D, config: DinosaurConfig): { length: number; width: number; height: number } {
@@ -50,11 +93,12 @@ export function normalizeDinosaur(model: Object3D, config: DinosaurConfig): { le
   unscaled.getSize(size)
   const length = Math.max(size.x, size.z, 0.001)
   model.scale.setScalar(config.targetLengthMeters / length)
-  snapFeetToGround(model, config.groundOffset ?? 0)
+  orientDinosaur(model, config.modelYawOffset ?? 0)
+  centerOnOrigin(model, config.groundOffset ?? 0)
   model.updateMatrixWorld(true)
 
   worldBounds(model).getSize(size)
-  return { length: size.z, width: size.x, height: size.y }
+  return { length: Math.max(size.x, size.z), width: Math.min(size.x, size.z), height: size.y }
 }
 
 export function screenToGround(

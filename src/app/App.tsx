@@ -46,11 +46,9 @@ export function App() {
   }
 
   const leaveAr = () => {
-    if (session.loading || !session.mode) {
-      void session.stop()
-    }
     session.clearError()
     setScreen('select')
+    void session.stop()
   }
 
   const goHome = () => {

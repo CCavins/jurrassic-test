@@ -2,7 +2,7 @@ import { Group, Mesh, type Material, type Object3D, type Scene } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { DinosaurConfig } from '../config/dinosaurs'
 import { DinosaurAnimator } from './dinosaurAnimation'
-import { normalizeDinosaur } from './dinosaurPlacement'
+import { centerOnOrigin, normalizeDinosaur } from './dinosaurPlacement'
 import { applyEstimatedLighting, createSceneLights, disposeLights, updateContactShadow, type SceneLights } from './lighting'
 
 const loader = new GLTFLoader()
@@ -42,14 +42,21 @@ export class DinosaurManager {
     this.config = config
     this.anchor.add(this.model)
     this.animator.attach(this.model, gltf.animations, config)
+    centerOnOrigin(this.model, config.groundOffset ?? 0)
+    this.animator.captureGroundPose(this.model)
     if (this.lights) updateContactShadow(this.lights, this.widthMeters, true)
     this.anchor.visible = false
-    this.anchor.position.y = 0
+    this.anchor.position.set(0, 0, 0)
+    this.anchor.rotation.set(0, 0, 0)
   }
 
   revealAt(x: number, z: number, groundY = 0): void {
     this.anchor.position.set(x, groundY, z)
     this.anchor.visible = true
+  }
+
+  faceToward(x: number, z: number): void {
+    this.anchor.lookAt(x, this.anchor.position.y, z)
   }
 
   hideForPlacement(): void {

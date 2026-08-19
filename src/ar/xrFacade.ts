@@ -121,13 +121,20 @@ class XrFacade {
     this.starting = false
     this.events.emit('loading', { message: null })
     this.events.emit('coaching', { message: null, phase: 'ready' })
+    this.events.emit('placed', { id: '', placed: false })
     if (window.XR8) {
       try {
         window.XR8.stop()
       } catch {
         // XR8.stop can throw if the camera never fully started.
       }
+      try {
+        window.XR8.clearCameraPipelineModules?.()
+      } catch {
+        // Older engine builds may not expose this.
+      }
     }
+    this.xrModulesReady = false
     this.world?.dispose()
     this.desktop?.dispose()
     this.canvas?.remove()

@@ -81,7 +81,7 @@ export class DesktopPreview {
       return false
     }
     this.manager.revealAt(hit.x, hit.z, 0)
-    this.manager.anchor.lookAt(this.camera.position.x, 0, this.camera.position.z)
+    this.manager.faceToward(this.camera.position.x, this.camera.position.z)
     this.placed = true
     this.events.emit('placed', { id: this.manager.config?.id ?? '', placed: true })
     this.events.emit('coaching', { phase: 'ready', message: 'Tap and drag the dinosaur to move it' })

@@ -14,6 +14,8 @@ export class DinosaurAnimator {
   private returning = false
   private groundOffset = 0
   private lockedFootY: number | null = null
+  private lockedX = 0
+  private lockedZ = 0
   private groundSamples = 0
 
   attach(root: Object3D, clips: AnimationClip[], config: DinosaurConfig): void {
@@ -38,20 +40,28 @@ export class DinosaurAnimator {
       this.current = idleAction.getClip().name
       this.mixer.update(1 / 30)
       snapFeetToGround(root, this.groundOffset)
+      this.captureGroundPose(root)
     }
     this.scheduleAmbient()
   }
 
+  captureGroundPose(root: Object3D): void {
+    this.lockedX = root.position.x
+    this.lockedZ = root.position.z
+    this.lockedFootY = root.position.y
+    this.groundSamples = 12
+  }
+
   update(delta: number, root: Object3D): string {
     this.mixer?.update(delta)
-    root.position.x = 0
-    root.position.z = 0
     if (this.lockedFootY === null || this.groundSamples < 12) {
       snapFeetToGround(root, this.groundOffset)
       this.lockedFootY = root.position.y
+      this.lockedX = root.position.x
+      this.lockedZ = root.position.z
       this.groundSamples += 1
     } else {
-      root.position.y = this.lockedFootY
+      root.position.set(this.lockedX, this.lockedFootY, this.lockedZ)
     }
 
     const now = performance.now()

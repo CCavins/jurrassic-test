@@ -37,9 +37,7 @@ export class XrWorldScene {
 
   async prepare(config: DinosaurConfig): Promise<void> {
     this.pendingConfig = config
-    if (this.placed && this.manager.model) {
-      await this.loadDinosaur(config)
-    }
+    if (this.canvas || this.manager.model) await this.loadDinosaur(config)
   }
 
   onStart(XR8: XR8Api): void {
@@ -116,7 +114,7 @@ export class XrWorldScene {
       return false
     }
     this.manager.revealAt(hit.x, hit.z, 0)
-    this.manager.anchor.lookAt(camera.position.x, 0, camera.position.z)
+    this.manager.faceToward(camera.position.x, camera.position.z)
     this.placed = true
     this.events.emit('placed', { id: this.manager.config?.id ?? '', placed: true })
     this.events.emit('coaching', { phase: 'ready', message: 'Tap and drag the dinosaur to move it' })
