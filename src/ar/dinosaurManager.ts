@@ -16,6 +16,7 @@ export class DinosaurManager {
   readonly animator = new DinosaurAnimator()
   private lights: SceneLights | null = null
   private scene: Scene | null = null
+  private loadToken = 0
 
   attach(scene: Scene): void {
     this.scene = scene
@@ -26,8 +27,11 @@ export class DinosaurManager {
   }
 
   async load(config: DinosaurConfig): Promise<void> {
+    const token = ++this.loadToken
     this.disposeModel()
     const gltf = await loader.loadAsync(config.modelUrl)
+    // A newer load superseded this one while the file was downloading.
+    if (token !== this.loadToken) return
     this.model = gltf.scene
     this.model.traverse((child) => {
       if (child instanceof Mesh) {

@@ -162,8 +162,12 @@ class XrFacade {
       requestMic: XR8.MediaRecorder.RequestMicOptions.MANUAL,
     })
 
-    this.world = new XrWorldScene(this.events)
-    await this.world.prepare(config)
+    // Keep a local reference: a quick back-and-reselect can replace
+    // this.world while prepare() is awaiting, and the stale continuation
+    // must not push its old dinosaur into the new session's world.
+    const world = new XrWorldScene(this.events)
+    this.world = world
+    await world.prepare(config)
     if (generation !== this.generation) return false
 
     const canvas = document.createElement('canvas')
@@ -201,6 +205,7 @@ class XrFacade {
       }),
     ].filter((module): module is NonNullable<typeof module> => Boolean(module))
 
+    if (generation !== this.generation) return false
     if (!this.xrModulesReady) {
       XR8.addCameraPipelineModules(modules)
       this.xrModulesReady = true

@@ -14,19 +14,24 @@ export function worldBounds(root: Object3D): Box3 {
   box.makeEmpty()
   root.updateMatrixWorld(true)
   root.traverse((child) => {
-    if (!(child instanceof Mesh) || !child.visible || child.name === 'contact-shadow') return
+    if (!(child instanceof Mesh) || !child.visible || child.name === 'contact-shadow' || !child.geometry) return
+    const position = child.geometry.getAttribute('position')
+    if (!position) return
     if (child instanceof SkinnedMesh) {
+      // SkinnedMesh.computeBoundingBox disagrees with the rendered pose for
+      // these rigs (metres of error), so sample the actual skinned vertices.
       child.skeleton?.update()
-      child.computeBoundingBox()
-      if (!child.boundingBox || child.boundingBox.isEmpty()) return
-      meshBox.copy(child.boundingBox).applyMatrix4(child.matrixWorld)
+      const step = Math.max(1, Math.floor(position.count / 600))
+      for (let i = 0; i < position.count; i += step) {
+        child.getVertexPosition(i, vertex).applyMatrix4(child.matrixWorld)
+        box.expandByPoint(vertex)
+      }
     } else {
-      if (!child.geometry) return
       if (!child.geometry.boundingBox) child.geometry.computeBoundingBox()
       if (!child.geometry.boundingBox) return
       meshBox.copy(child.geometry.boundingBox).applyMatrix4(child.matrixWorld)
+      box.union(meshBox)
     }
-    box.union(meshBox)
   })
   if (box.isEmpty()) box.setFromObject(root)
   return box
@@ -48,42 +53,9 @@ export function centerOnOrigin(root: Object3D, offset = 0): void {
   snapFeetToGround(root, offset)
 }
 
-export function orientDinosaur(model: Object3D, yawOffset = 0): void {
-  model.updateMatrixWorld(true)
-  worldBounds(model).getSize(size)
-  if (size.x > size.z * 1.08) {
-    model.rotateY(Math.PI / 2)
-    model.updateMatrixWorld(true)
-  }
-
-  let towardMinusZ = 0
-  let towardPlusZ = 0
-  const oriented = worldBounds(model)
-  const midZ = (oriented.min.z + oriented.max.z) / 2
-  const headY = oriented.min.y + (oriented.max.y - oriented.min.y) * 0.5
-
-  model.traverse((child) => {
-    if (!(child instanceof Mesh) || !child.visible || child.name === 'contact-shadow' || !child.geometry) return
-    const position = child.geometry.getAttribute('position')
-    if (!position) return
-    if (child instanceof SkinnedMesh) child.skeleton?.update()
-    const step = Math.max(1, Math.floor(position.count / 900))
-    for (let i = 0; i < position.count; i += step) {
-      if (child instanceof SkinnedMesh) child.getVertexPosition(i, vertex)
-      else vertex.fromBufferAttribute(position, i)
-      vertex.applyMatrix4(child.matrixWorld)
-      if (vertex.y < headY) continue
-      if (vertex.z < midZ) towardMinusZ += 1
-      else towardPlusZ += 1
-    }
-  })
-
-  if (towardPlusZ > towardMinusZ) model.rotateY(Math.PI)
-  if (yawOffset) model.rotateY(yawOffset)
-  model.updateMatrixWorld(true)
-}
-
 export function normalizeDinosaur(model: Object3D, config: DinosaurConfig): { length: number; width: number; height: number } {
+  // Quaternius rigs share one convention: long axis on Z, head toward +Z,
+  // which is what Object3D.lookAt expects. Only apply the configured yaw.
   model.scale.setScalar(1)
   model.position.set(0, 0, 0)
   model.rotation.set(0, config.modelYawOffset ?? 0, 0)
@@ -92,8 +64,14 @@ export function normalizeDinosaur(model: Object3D, config: DinosaurConfig): { le
   const unscaled = worldBounds(model)
   unscaled.getSize(size)
   const length = Math.max(size.x, size.z, 0.001)
-  model.scale.setScalar(config.targetLengthMeters / length)
-  orientDinosaur(model, config.modelYawOffset ?? 0)
+  const height = Math.max(size.y, 0.001)
+  let scale = config.targetLengthMeters / length
+  // Models posed with a raised neck (Apatosaurus) would tower if scaled by
+  // ground length alone, so cap the result at the target height.
+  if (config.targetHeightMeters && height * scale > config.targetHeightMeters * 1.3) {
+    scale = (config.targetHeightMeters * 1.3) / height
+  }
+  model.scale.setScalar(scale)
   centerOnOrigin(model, config.groundOffset ?? 0)
   model.updateMatrixWorld(true)
 

@@ -57,6 +57,9 @@ export class DesktopPreview {
     grid.position.y = 0.001
     this.scene.add(grid)
     this.manager.attach(this.scene)
+    if (import.meta.env.DEV) {
+      ;(window as unknown as { __preview?: DesktopPreview }).__preview = this
+    }
     this.resize()
     this.bind()
     this.loop()

@@ -46,10 +46,13 @@ export class DinosaurAnimator {
   }
 
   captureGroundPose(root: Object3D): void {
+    // Record the centered pose now, but let update() re-snap the feet over
+    // the first rendered frames — load-time bounds can differ from the pose
+    // the mixer settles into.
     this.lockedX = root.position.x
     this.lockedZ = root.position.z
     this.lockedFootY = root.position.y
-    this.groundSamples = 12
+    this.groundSamples = 0
   }
 
   update(delta: number, root: Object3D): string {
