@@ -69,6 +69,9 @@ export function useARSession() {
     stopRecording: async () => (await facade()).stopRecording(),
     recenter: async () => (await facade()).recenter(),
     placeAt: async (clientX: number, clientY: number) => (await facade()).placeAt(clientX, clientY),
+    pointerDown: async (clientX: number, clientY: number) => (await facade()).pointerDown(clientX, clientY),
+    pointerMove: async (clientX: number, clientY: number) => (await facade()).pointerMove(clientX, clientY),
+    pointerUp: async () => (await facade()).pointerUp(),
     stop: async () => {
       setLoading(null)
       setCoaching(null)

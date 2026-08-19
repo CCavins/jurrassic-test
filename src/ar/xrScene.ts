@@ -121,7 +121,7 @@ export class XrWorldScene {
     this.manager.faceToward(camera.position.x, camera.position.z)
     this.placed = true
     this.events.emit('placed', { id: this.manager.config?.id ?? '', placed: true })
-    this.events.emit('coaching', { phase: 'ready', message: 'Tap and drag the dinosaur to move it' })
+    this.events.emit('coaching', { phase: 'ready', message: 'Tap the ground to move, or drag to slide' })
     return true
   }
 
@@ -270,29 +270,54 @@ export class XrWorldScene {
     this.canvas?.removeEventListener('pointercancel', this.onUp)
   }
 
-  private onDown = (event: PointerEvent) => {
-    if (!this.canvas || !window.XR8) return
+  handlePointerDown(clientX: number, clientY: number): boolean {
+    if (!this.canvas || !window.XR8) return false
     if (!this.placed) {
-      this.placeAt(event.clientX, event.clientY)
-      return
+      const placed = this.placeAt(clientX, clientY)
+      if (placed) this.interaction.beginDrag()
+      return placed
     }
     const { camera } = window.XR8.Threejs.xrScene()
-    const hit = this.interaction.pointerDown(event.clientX, event.clientY, this.canvas, camera, this.manager.model)
-    if (hit) this.canvas.setPointerCapture(event.pointerId)
+    const hit = this.interaction.pointerDown(
+      clientX,
+      clientY,
+      this.canvas,
+      camera,
+      this.manager.model,
+      this.manager.anchor,
+    )
     this.events.emit('selected', { selected: this.interaction.selected })
     this.manager.showSelection(this.interaction.selected)
+    if (hit) this.events.emit('coaching', { phase: 'ready', message: null })
+    return hit
+  }
+
+  handlePointerMove(clientX: number, clientY: number): boolean {
+    if (!this.canvas || !window.XR8) return false
+    const { camera } = window.XR8.Threejs.xrScene()
+    if (this.interaction.pointerMove(clientX, clientY, this.canvas, camera, this.manager.anchor)) {
+      this.events.emit('coaching', { phase: 'ready', message: null })
+      return true
+    }
+    return false
+  }
+
+  handlePointerUp(): void {
+    this.interaction.pointerUp()
+  }
+
+  private onDown = (event: PointerEvent) => {
+    if (this.handlePointerDown(event.clientX, event.clientY)) {
+      this.canvas?.setPointerCapture(event.pointerId)
+    }
   }
 
   private onMove = (event: PointerEvent) => {
-    if (!this.canvas || !window.XR8) return
-    const { camera } = window.XR8.Threejs.xrScene()
-    if (this.interaction.pointerMove(event.clientX, event.clientY, this.canvas, camera, this.manager.anchor)) {
-      this.events.emit('coaching', { phase: 'ready', message: null })
-    }
+    this.handlePointerMove(event.clientX, event.clientY)
   }
 
   private onUp = () => {
-    this.interaction.pointerUp()
+    this.handlePointerUp()
   }
 
   private tickFps(): void {

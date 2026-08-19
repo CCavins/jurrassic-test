@@ -105,7 +105,9 @@ export function App() {
             awaitingPlacement={!session.placed && !session.loading}
             onBack={leaveAr}
             onRecenter={() => void session.recenter()}
-            onPlace={(clientX, clientY) => void session.placeAt(clientX, clientY)}
+            onPlace={(clientX, clientY) => void session.pointerDown(clientX, clientY)}
+            onDrag={(clientX, clientY) => void session.pointerMove(clientX, clientY)}
+            onRelease={() => void session.pointerUp()}
             onPhoto={() => void session.takePhoto()}
             onHoldStart={() => void session.startRecording()}
             onHoldEnd={() => void session.stopRecording()}

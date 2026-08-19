@@ -12,6 +12,8 @@ interface Props {
   onBack: () => void
   onRecenter: () => void
   onPlace: (clientX: number, clientY: number) => void
+  onDrag: (clientX: number, clientY: number) => void
+  onRelease: () => void
   onPhoto: () => void
   onHoldStart: () => void
   onHoldEnd: () => void
@@ -29,23 +31,30 @@ export function ARHud({
   onBack,
   onRecenter,
   onPlace,
+  onDrag,
+  onRelease,
   onPhoto,
   onHoldStart,
   onHoldEnd,
 }: Props) {
   return (
     <div className="hud">
-      {awaitingPlacement ? (
-        <button
-          className="place-layer"
-          type="button"
-          aria-label="Tap the ground to place the dinosaur"
-          onPointerDown={(event) => {
-            event.preventDefault()
-            onPlace(event.clientX, event.clientY)
-          }}
-        />
-      ) : null}
+      <button
+        className="place-layer"
+        type="button"
+        aria-label={awaitingPlacement ? 'Tap the ground to place the dinosaur' : 'Tap or drag on the ground to move the dinosaur'}
+        onPointerDown={(event) => {
+          event.preventDefault()
+          event.currentTarget.setPointerCapture(event.pointerId)
+          onPlace(event.clientX, event.clientY)
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+          onDrag(event.clientX, event.clientY)
+        }}
+        onPointerUp={onRelease}
+        onPointerCancel={onRelease}
+      />
       <div className="hud-top">
         <button className="icon-btn" onClick={onBack} aria-label="Back to dinosaur selection">
           ←

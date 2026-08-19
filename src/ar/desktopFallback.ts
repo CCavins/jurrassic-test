@@ -88,7 +88,7 @@ export class DesktopPreview {
     this.manager.faceToward(this.camera.position.x, this.camera.position.z)
     this.placed = true
     this.events.emit('placed', { id: this.manager.config?.id ?? '', placed: true })
-    this.events.emit('coaching', { phase: 'ready', message: 'Tap and drag the dinosaur to move it' })
+    this.events.emit('coaching', { phase: 'ready', message: 'Tap the ground to move, or drag to slide' })
     return true
   }
 
@@ -134,25 +134,50 @@ export class DesktopPreview {
     this.canvas.addEventListener('pointercancel', this.onUp)
   }
 
-  private onDown = (event: PointerEvent) => {
+  handlePointerDown(clientX: number, clientY: number): boolean {
     if (!this.placed) {
-      this.placeAt(event.clientX, event.clientY)
-      return
+      const placed = this.placeAt(clientX, clientY)
+      if (placed) this.interaction.beginDrag()
+      return placed
     }
-    const hit = this.interaction.pointerDown(event.clientX, event.clientY, this.canvas, this.camera, this.manager.model)
-    if (hit) this.canvas.setPointerCapture(event.pointerId)
+    const hit = this.interaction.pointerDown(
+      clientX,
+      clientY,
+      this.canvas,
+      this.camera,
+      this.manager.model,
+      this.manager.anchor,
+    )
     this.events.emit('selected', { selected: this.interaction.selected })
     this.manager.showSelection(this.interaction.selected)
+    if (hit) this.events.emit('coaching', { phase: 'ready', message: null })
+    return hit
+  }
+
+  handlePointerMove(clientX: number, clientY: number): boolean {
+    if (this.interaction.pointerMove(clientX, clientY, this.canvas, this.camera, this.manager.anchor)) {
+      this.events.emit('coaching', { phase: 'ready', message: null })
+      return true
+    }
+    return false
+  }
+
+  handlePointerUp(): void {
+    this.interaction.pointerUp()
+  }
+
+  private onDown = (event: PointerEvent) => {
+    if (this.handlePointerDown(event.clientX, event.clientY)) {
+      this.canvas.setPointerCapture(event.pointerId)
+    }
   }
 
   private onMove = (event: PointerEvent) => {
-    if (this.interaction.pointerMove(event.clientX, event.clientY, this.canvas, this.camera, this.manager.anchor)) {
-      this.events.emit('coaching', { phase: 'ready', message: null })
-    }
+    this.handlePointerMove(event.clientX, event.clientY)
   }
 
   private onUp = () => {
-    this.interaction.pointerUp()
+    this.handlePointerUp()
   }
 
   private resize = () => {

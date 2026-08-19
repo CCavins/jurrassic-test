@@ -11,12 +11,19 @@ export class DinosaurInteraction {
   selected = false
   private moved = false
 
-  pointerDown(clientX: number, clientY: number, canvas: HTMLCanvasElement, camera: Camera, model: Object3D | null): boolean {
-    if (!model) return false
+  pointerDown(
+    clientX: number,
+    clientY: number,
+    canvas: HTMLCanvasElement,
+    camera: Camera,
+    model: Object3D | null,
+    anchor: Object3D,
+  ): boolean {
     this.project(clientX, clientY, canvas)
     raycaster.setFromCamera(pointer, camera)
-    const intersects = raycaster.intersectObject(model, true)
-    if (intersects.length === 0) {
+    const onModel = Boolean(model?.visible && raycaster.intersectObject(model, true).length > 0)
+    const onGround = Boolean(raycaster.ray.intersectPlane(ground, hit))
+    if (!onModel && !onGround) {
       this.selected = false
       this.dragging = false
       return false
@@ -24,7 +31,17 @@ export class DinosaurInteraction {
     this.selected = true
     this.dragging = true
     this.moved = false
+    if (!onModel && onGround) {
+      anchor.position.set(hit.x, 0, hit.z)
+      this.moved = true
+    }
     return true
+  }
+
+  beginDrag(): void {
+    this.selected = true
+    this.dragging = true
+    this.moved = false
   }
 
   pointerMove(

@@ -111,9 +111,24 @@ class XrFacade {
   }
 
   placeAt(clientX: number, clientY: number): boolean {
-    if (this.mode === 'xr' && this.world) return this.world.placeAt(clientX, clientY)
-    if (this.mode === 'desktop' && this.desktop) return this.desktop.placeAt(clientX, clientY)
+    return this.pointerDown(clientX, clientY)
+  }
+
+  pointerDown(clientX: number, clientY: number): boolean {
+    if (this.mode === 'xr' && this.world) return this.world.handlePointerDown(clientX, clientY)
+    if (this.mode === 'desktop' && this.desktop) return this.desktop.handlePointerDown(clientX, clientY)
     return false
+  }
+
+  pointerMove(clientX: number, clientY: number): boolean {
+    if (this.mode === 'xr' && this.world) return this.world.handlePointerMove(clientX, clientY)
+    if (this.mode === 'desktop' && this.desktop) return this.desktop.handlePointerMove(clientX, clientY)
+    return false
+  }
+
+  pointerUp(): void {
+    if (this.mode === 'xr' && this.world) this.world.handlePointerUp()
+    if (this.mode === 'desktop' && this.desktop) this.desktop.handlePointerUp()
   }
 
   pauseForPreview(): void {
