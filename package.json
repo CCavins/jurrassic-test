@@ -6,6 +6,7 @@
   "scripts": {
     "postinstall": "node scripts/copy-xr.mjs",
     "dev": "vite",
+    "dev:http": "vite --host --port 5174",
     "build": "tsc -b && vite build && cp dist/index.html dist/404.html && cp public/.nojekyll dist/.nojekyll",
     "lint": "oxlint",
     "preview": "vite preview"

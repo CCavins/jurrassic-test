@@ -155,6 +155,11 @@ a {
   letter-spacing: 0.08em;
 }
 
+.btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
 .btn-ghost,
 .btn-secondary {
   background: var(--color-surface);
@@ -174,7 +179,7 @@ a {
   padding:
     calc(var(--safe-top) + 20px)
     calc(var(--safe-right) + 20px)
-    calc(var(--safe-bottom) + 110px)
+    calc(var(--safe-bottom) + 140px)
     calc(var(--safe-left) + 20px);
 }
 

@@ -17,14 +17,14 @@ export interface SceneLights {
 }
 
 export function createSceneLights(scene: Scene, parent: Group): SceneLights {
-  const hemi = new HemisphereLight(0xd8e4ff, 0x2b2418, 0.72)
+  const hemi = new HemisphereLight(0xd8e4ff, 0x2b2418, 0.95)
   scene.add(hemi)
 
-  const key = new DirectionalLight(0xfff2d6, 1.05)
+  const key = new DirectionalLight(0xfff2d6, 1.35)
   key.position.set(4, 8, 2)
   scene.add(key)
 
-  const fill = new DirectionalLight(0xb7c4d8, 0.28)
+  const fill = new DirectionalLight(0xb7c4d8, 0.45)
   fill.position.set(-5, 3, -3)
   scene.add(fill)
 

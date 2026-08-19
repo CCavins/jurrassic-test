@@ -46,7 +46,7 @@ export class DesktopPreview {
     this.renderer = new WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: false, preserveDrawingBuffer: true })
     this.renderer.outputColorSpace = SRGBColorSpace
     this.renderer.toneMapping = ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.05
+    this.renderer.toneMappingExposure = 1.35
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
     this.camera = new PerspectiveCamera(60, 1, 0.1, 120)

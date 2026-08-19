@@ -9,7 +9,9 @@ export function HomeScreen({ onStart, onCredits }: Props) {
   return (
     <section
       className="screen hero"
-      style={{ ['--hero-image' as string]: `url(${publicUrl('images/hero.jpg')})` }}
+      style={{
+        backgroundImage: `linear-gradient(180deg, rgba(8, 10, 8, 0.18) 0%, rgba(8, 10, 8, 0.55) 48%, rgba(8, 10, 8, 0.88) 100%), url("${publicUrl('images/hero.jpg')}")`,
+      }}
     >
       <p className="kicker">Field expedition</p>
       <h1 className="display">

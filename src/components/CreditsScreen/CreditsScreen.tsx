@@ -8,7 +8,9 @@ export function CreditsScreen({ onBack }: Props) {
   return (
     <section
       className="screen legal"
-      style={{ ['--texture-image' as string]: `url(${publicUrl('images/texture.jpg')})` }}
+      style={{
+        backgroundImage: `linear-gradient(180deg, rgba(13, 15, 13, 0.72), rgba(13, 15, 13, 0.88)), url("${publicUrl('images/texture.jpg')}")`,
+      }}
     >
       <button className="icon-btn" onClick={onBack} aria-label="Back">
         ←

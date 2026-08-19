@@ -16,64 +16,41 @@ import type { AppScreen } from './appState'
 export function App() {
   const [screen, setScreen] = useState<AppScreen>('home')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [startToken, setStartToken] = useState(0)
   const hostRef = useRef<HTMLDivElement>(null)
   const session = useARSession()
+  const startSession = session.start
+  const startRef = useRef(startSession)
+  startRef.current = startSession
   const dinosaur = selectedId ? getDinosaur(selectedId) : undefined
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--hero-image', `url(${publicUrl('images/hero.jpg')})`)
-    document.documentElement.style.setProperty('--texture-image', `url(${publicUrl('images/texture.jpg')})`)
+    const hero = publicUrl('images/hero.jpg')
+    const texture = publicUrl('images/texture.jpg')
+    document.documentElement.style.setProperty('--hero-image', `url("${hero}")`)
+    document.documentElement.style.setProperty('--texture-image', `url("${texture}")`)
   }, [])
 
-  const enterAr = async () => {
-    if (!dinosaur || !hostRef.current) return
-    if (!hasWebGl()) {
-      session.clearError()
-      setScreen('ar')
-      return
-    }
+  useEffect(() => {
+    if (screen !== 'ar' || startToken === 0 || !dinosaur) return
+    const host = hostRef.current
+    if (!host) return
+    if (!hasWebGl()) return
+    void startRef.current(host, dinosaur).catch(() => undefined)
+  }, [screen, startToken, dinosaur])
+
+  const enterAr = () => {
+    if (!dinosaur) return
+    session.clearError()
     setScreen('ar')
-    try {
-      await session.start(hostRef.current, dinosaur)
-    } catch {
-      // errors arrive through the facade
-    }
+    setStartToken((value) => value + 1)
   }
 
   const goHome = () => {
-    session.stop()
+    void session.stop()
     session.clearCapture()
     session.clearError()
     setScreen('home')
-  }
-
-  if (screen === 'home') {
-    return (
-      <div className="app">
-        <HomeScreen onStart={() => setScreen('select')} onCredits={() => setScreen('credits')} />
-      </div>
-    )
-  }
-
-  if (screen === 'credits') {
-    return (
-      <div className="app">
-        <CreditsScreen onBack={() => setScreen('home')} />
-      </div>
-    )
-  }
-
-  if (screen === 'select') {
-    return (
-      <div className="app">
-        <DinosaurSelector
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onEnter={() => void enterAr()}
-          onBack={goHome}
-        />
-      </div>
-    )
   }
 
   const unsupported = isSecureContextRequired()
@@ -88,35 +65,58 @@ export function App() {
         }
       : session.error
 
+  const showArChrome = screen === 'ar' || Boolean(session.capture)
+
   return (
-    <div className="app screen screen--locked">
-      <div ref={hostRef} className="xr-root" />
-      {screen === 'ar' && dinosaur && !unsupported ? (
-        <ARHud
-          name={dinosaur.name}
-          helper={session.coaching}
-          desktop={session.mode === 'desktop' || !canAttemptWorldTracking()}
-          recording={session.recording.active}
-          elapsedMs={session.recording.elapsedMs}
-          maxMs={session.recording.maxMs}
-          emphasizeRecenter={session.tracking === 'LIMITED'}
-          onBack={() => setScreen('select')}
-          onRecenter={() => session.recenter()}
-          onPhoto={() => void session.takePhoto()}
-          onHoldStart={() => void session.startRecording()}
-          onHoldEnd={() => void session.stopRecording()}
+    <div className="app">
+      <div ref={hostRef} className="xr-root" hidden={!showArChrome} />
+
+      {screen === 'home' ? (
+        <HomeScreen onStart={() => setScreen('select')} onCredits={() => setScreen('credits')} />
+      ) : null}
+
+      {screen === 'credits' ? <CreditsScreen onBack={() => setScreen('home')} /> : null}
+
+      {screen === 'select' ? (
+        <DinosaurSelector
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onEnter={enterAr}
+          onBack={goHome}
         />
       ) : null}
+
+      {screen === 'ar' && dinosaur && !unsupported ? (
+        <div className="screen screen--locked">
+          <ARHud
+            name={dinosaur.name}
+            helper={session.coaching}
+            desktop={session.mode === 'desktop' || !canAttemptWorldTracking()}
+            recording={session.recording.active}
+            elapsedMs={session.recording.elapsedMs}
+            maxMs={session.recording.maxMs}
+            emphasizeRecenter={session.tracking === 'LIMITED'}
+            onBack={() => setScreen('select')}
+            onRecenter={() => void session.recenter()}
+            onPhoto={() => void session.takePhoto()}
+            onHoldStart={() => void session.startRecording()}
+            onHoldEnd={() => void session.stopRecording()}
+          />
+        </div>
+      ) : null}
+
       {session.loading ? <LoadingScreen message={session.loading} /> : null}
-      {unsupported ? (
+
+      {screen === 'ar' && unsupported ? (
         <PermissionScreen
           title={unsupported.title}
           message={unsupported.message}
           actionLabel={session.error?.code === 'camera' ? 'Enable camera' : 'Back'}
-          onAction={session.error?.code === 'camera' ? () => void enterAr() : () => setScreen('select')}
+          onAction={session.error?.code === 'camera' ? enterAr : () => setScreen('select')}
           onBack={() => setScreen('select')}
         />
       ) : null}
+
       {session.capture ? (
         <CapturePreview
           media={session.capture}
@@ -126,6 +126,7 @@ export function App() {
           }}
         />
       ) : null}
+
       <DebugOverlay />
     </div>
   )

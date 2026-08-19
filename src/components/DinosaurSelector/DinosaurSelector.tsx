@@ -12,7 +12,9 @@ export function DinosaurSelector({ selectedId, onSelect, onEnter, onBack }: Prop
   return (
     <section
       className="screen select"
-      style={{ ['--texture-image' as string]: `url(${publicUrl('images/texture.jpg')})` }}
+      style={{
+        backgroundImage: `linear-gradient(180deg, rgba(13, 15, 13, 0.72), rgba(13, 15, 13, 0.88)), url("${publicUrl('images/texture.jpg')}")`,
+      }}
     >
       <header className="select-head">
         <div>
@@ -47,7 +49,7 @@ export function DinosaurSelector({ selectedId, onSelect, onEnter, onBack }: Prop
       </div>
       <div className="dock">
         <button className="btn btn-primary" disabled={!selectedId} onClick={onEnter}>
-          Enter AR
+          {selectedId ? 'Enter AR' : 'Select a dinosaur'}
         </button>
       </div>
     </section>
