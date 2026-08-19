@@ -14,6 +14,7 @@ export function CapturePreview({ media, onTryAgain }: Props) {
     if (media.kind !== 'video' || !video.current) return
     const player = video.current
     player.muted = true
+    player.playsInline = true
     player.currentTime = 0
     const play = () => void player.play().catch(() => undefined)
     play()
@@ -23,30 +24,41 @@ export function CapturePreview({ media, onTryAgain }: Props) {
 
   return (
     <section className="preview" role="dialog" aria-label="Capture preview">
-      <div className="preview-media">
-        {media.kind === 'photo' ? (
-          <img src={media.url} alt="Captured Jurassic Adventure photo" />
-        ) : (
-          <video
-            ref={video}
-            className="preview-video"
-            src={media.url}
-            autoPlay
-            muted
-            loop
-            playsInline
-            disablePictureInPicture
-            controls={false}
-          />
-        )}
-      </div>
-      <div className="preview-actions">
-        <button className="btn btn-primary" onClick={() => void shareOrDownload(media.blob, media.kind)}>
-          Save / Share
-        </button>
-        <button className="btn btn-ghost" onClick={onTryAgain}>
-          Try again
-        </button>
+      <div className="preview-shell">
+        <header className="preview-head">
+          <p className="kicker">Field capture</p>
+          <h1 className="preview-title">{media.kind === 'photo' ? 'Photo ready' : 'Clip ready'}</h1>
+        </header>
+
+        <div className="preview-card">
+          <div className="preview-stage">
+            {media.kind === 'photo' ? (
+              <img src={media.url} alt="Captured Jurassic Adventure photo" />
+            ) : (
+              <video
+                ref={video}
+                className="preview-video"
+                src={media.url}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+                controls={false}
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="preview-actions">
+          <button className="btn btn-primary" onClick={() => void shareOrDownload(media.blob, media.kind)}>
+            Save / Share
+          </button>
+          <button className="btn btn-ghost" onClick={onTryAgain}>
+            Try again
+          </button>
+        </div>
       </div>
     </section>
   )

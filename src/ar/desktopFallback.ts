@@ -32,6 +32,7 @@ export class DesktopPreview {
   private fpsAt = performance.now()
   private fps = 0
   private placed = false
+  private paused = false
 
   constructor(
     host: HTMLElement,
@@ -112,6 +113,10 @@ export class DesktopPreview {
     this.events.emit('capture', media)
   }
 
+  setPaused(paused: boolean): void {
+    this.paused = paused
+  }
+
   dispose(): void {
     this.disposed = true
     cancelAnimationFrame(this.raf)
@@ -161,6 +166,7 @@ export class DesktopPreview {
   private loop = () => {
     if (this.disposed) return
     this.raf = requestAnimationFrame(this.loop)
+    if (this.paused) return
     const delta = this.clock.getDelta()
     const animation = this.manager.update(delta)
     this.renderer.render(this.scene, this.camera)

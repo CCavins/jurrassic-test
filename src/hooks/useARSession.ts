@@ -32,7 +32,10 @@ export function useARSession() {
         xr.events.on('selected', ({ selected: next }) => setSelected(next)),
         xr.events.on('placed', ({ placed: next }) => setPlaced(next)),
         xr.events.on('recording', setRecording),
-        xr.events.on('capture', setCapture),
+        xr.events.on('capture', (media) => {
+          setCapture(media)
+          xr.pauseForPreview()
+        }),
         xr.events.on('error', setError),
       )
     })
@@ -57,6 +60,7 @@ export function useARSession() {
     clearCapture: () => {
       if (capture?.url) URL.revokeObjectURL(capture.url)
       setCapture(null)
+      void facade().then((xr) => xr.resumeFromPreview())
     },
     start: async (host: HTMLElement, config: DinosaurConfig) => (await facade()).start(host, config),
     changeDinosaur: async (config: DinosaurConfig) => (await facade()).changeDinosaur(config),

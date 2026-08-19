@@ -1,6 +1,12 @@
 import type { DinosaurConfig } from '../config/dinosaurs'
 import { canAttemptWorldTracking } from '../utils/device'
-import { captureStillFromCanvas, createCanvasRecorder, MAX_MS } from './captureManager'
+import {
+  captureStillFromCanvas,
+  createCanvasRecorder,
+  MAX_MS,
+  RECORD_BITRATE,
+  RECORD_MAX_DIMENSION,
+} from './captureManager'
 import { DesktopPreview } from './desktopFallback'
 import { ArEmitter } from './events'
 import { createFullWindowCanvasModule } from './fullWindowCanvas'
@@ -116,6 +122,28 @@ class XrFacade {
     return false
   }
 
+  pauseForPreview(): void {
+    this.desktop?.setPaused(true)
+    if (this.mode === 'xr' && window.XR8?.pause) {
+      try {
+        window.XR8.pause()
+      } catch {
+        // pause is best-effort so the share screen can play back smoothly.
+      }
+    }
+  }
+
+  resumeFromPreview(): void {
+    this.desktop?.setPaused(false)
+    if (this.mode === 'xr' && window.XR8?.resume) {
+      try {
+        window.XR8.resume()
+      } catch {
+        // resume is best-effort after the share screen closes.
+      }
+    }
+  }
+
   stop(): void {
     this.generation += 1
     this.starting = false
@@ -158,6 +186,9 @@ class XrFacade {
     })
     XR8.MediaRecorder?.configure({
       maxDurationMs: MAX_MS,
+      maxDimension: RECORD_MAX_DIMENSION,
+      fps: 30,
+      videoBitsPerSecond: RECORD_BITRATE,
       enableEndCard: false,
       requestMic: XR8.MediaRecorder.RequestMicOptions.MANUAL,
     })

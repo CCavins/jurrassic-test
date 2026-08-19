@@ -3,6 +3,9 @@ import type { CaptureMedia } from './events'
 import { loadXrEngine, takeXrScreenshot } from './xrEngine'
 
 export const MAX_MS = 15000
+export const RECORD_MAX_DIMENSION = 1280
+export const RECORD_BITRATE = 6_000_000
+export const RECORD_TICK_MS = 250
 
 export interface RecorderHandle {
   start: () => Promise<void>
@@ -36,7 +39,10 @@ export function createCanvasRecorder(
     async start() {
       stream = canvas.captureStream(30)
       const mime = pickRecorderMime()
-      recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      recorder = new MediaRecorder(stream, {
+        ...(mime ? { mimeType: mime } : {}),
+        videoBitsPerSecond: RECORD_BITRATE,
+      })
       chunks = []
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunks.push(event.data)
@@ -52,7 +58,7 @@ export function createCanvasRecorder(
         const elapsed = performance.now() - startedAt
         onTick(elapsed)
         if (elapsed >= MAX_MS) void handle.stop()
-      }, 100)
+      }, RECORD_TICK_MS)
     },
     stop() {
       window.clearInterval(timer)

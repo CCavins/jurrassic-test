@@ -1,7 +1,7 @@
 import { Clock, Quaternion, Vector3 } from 'three'
 import type { DinosaurConfig } from '../config/dinosaurs'
 import type { XR8Api, XR8Reality } from '../types/xr8'
-import { captureStillFromXr, MAX_MS } from './captureManager'
+import { captureStillFromXr, MAX_MS, RECORD_BITRATE, RECORD_MAX_DIMENSION, RECORD_TICK_MS } from './captureManager'
 import { DinosaurInteraction } from './dinosaurInteraction'
 import { DinosaurManager } from './dinosaurManager'
 import { screenToGround } from './dinosaurPlacement'
@@ -30,6 +30,8 @@ export class XrWorldScene {
   private smoothCamQuat = new Quaternion()
   private hasCamSample = false
   private settleFrames = 0
+  private lastRecordEmit = 0
+  private lightingFrame = 0
 
   constructor(events: ArEmitter) {
     this.events = events
@@ -65,11 +67,13 @@ export class XrWorldScene {
     const { camera } = XR8.Threejs.xrScene()
     const delta = this.clock.getDelta()
     this.animation = this.manager.update(delta)
-    if (reality?.lighting?.exposure !== undefined) {
+    this.lightingFrame += 1
+    if (reality?.lighting?.exposure !== undefined && (!this.recording || this.lightingFrame % 8 === 0)) {
       this.manager.applyExposure(reality.lighting.exposure)
     }
     this.stabilizeCamera(camera)
     this.manager.anchor.position.y = 0
+    if (this.recording) return
     this.tickFps()
     this.events.emit('debug', {
       fps: this.fps,
@@ -179,14 +183,20 @@ export class XrWorldScene {
     if (!XR8.MediaRecorder) throw new Error('Video recording is not available on this device.')
     XR8.MediaRecorder.configure({
       maxDurationMs: MAX_MS,
+      maxDimension: RECORD_MAX_DIMENSION,
+      fps: 30,
+      videoBitsPerSecond: RECORD_BITRATE,
       enableEndCard: false,
       requestMic: XR8.MediaRecorder.RequestMicOptions.MANUAL,
       fileNamePrefix: 'jurassic-adventure-',
     })
     this.recording = true
+    this.lastRecordEmit = 0
     XR8.MediaRecorder.recordVideo({
       onStart: () => this.events.emit('recording', { active: true, elapsedMs: 0, maxMs: MAX_MS }),
       onProcessFrame: ({ elapsedTimeMs, maxRecordingMs }) => {
+        if (elapsedTimeMs - this.lastRecordEmit < RECORD_TICK_MS) return
+        this.lastRecordEmit = elapsedTimeMs
         this.events.emit('recording', { active: true, elapsedMs: elapsedTimeMs, maxMs: maxRecordingMs })
       },
       onStop: () => {

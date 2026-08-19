@@ -91,7 +91,7 @@ export function App() {
         />
       ) : null}
 
-      {screen === 'ar' && dinosaur && !unsupported ? (
+      {screen === 'ar' && dinosaur && !unsupported && !session.capture ? (
         <div className="screen screen--locked">
           <ARHud
             name={dinosaur.name}

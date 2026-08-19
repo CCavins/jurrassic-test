@@ -39,8 +39,9 @@ export function createFullWindowCanvasModule(): XR8PipelineModule {
     if (!canvas) return
 
     const css = viewportCssSize()
-    const pixelWidth = Math.max(1, Math.round(css.width * devicePixelRatio))
-    const pixelHeight = Math.max(1, Math.round(css.height * devicePixelRatio))
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const pixelWidth = Math.max(1, Math.round(css.width * dpr))
+    const pixelHeight = Math.max(1, Math.round(css.height * dpr))
     const portrait = Math.abs(orientation) !== 90
     if ((portrait && pixelWidth > pixelHeight) || (!portrait && pixelHeight > pixelWidth)) {
       window.requestAnimationFrame(() => fill(force))

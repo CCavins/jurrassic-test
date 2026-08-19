@@ -111,6 +111,8 @@ export interface XR8Api {
       enableEndCard?: boolean
       requestMic?: string
       fileNamePrefix?: string
+      fps?: number
+      videoBitsPerSecond?: number
     }) => void
     recordVideo: (callbacks: {
       onStart?: () => void
