@@ -1,0 +1,15 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
+
+export default defineConfig({
+  base: './',
+  plugins: [react(), basicSsl()],
+  server: {
+    host: true,
+    allowedHosts: ['.ngrok-free.dev', '.ngrok.io'],
+  },
+  preview: {
+    host: true,
+  },
+})

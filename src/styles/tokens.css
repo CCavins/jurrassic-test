@@ -1,0 +1,18 @@
+:root {
+  --color-bg: #0d0f0d;
+  --color-surface: rgba(20, 24, 20, 0.82);
+  --color-text: #f4f0e6;
+  --color-muted: rgba(244, 240, 230, 0.68);
+  --color-accent: #c99b52;
+  --color-border: rgba(255, 255, 255, 0.14);
+  --color-forest: #16301f;
+  --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.35);
+  --font-serif: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', serif;
+  --font-sans: 'Outfit', 'Avenir Next', 'Segoe UI', sans-serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 280ms;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
